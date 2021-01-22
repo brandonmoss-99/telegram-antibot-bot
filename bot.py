@@ -428,35 +428,9 @@ def readIntFileToList(path):
 
 
 if __name__ == '__main__':
-	# set initial offset to 0, to make telegram send all new updates
-	# pollTimeout -> how long to wait for long poll response in seconds
-	msgOffset, pollTimeout = 0, 20
 	# initial token value
 	token = ""
 	argv = sys.argv[1:]
-
-	# dictionary of new users who need to be kept track of until
-	# new user requirements are satisfied
-	newUsers = {}
-
-	# Chat IDs to work with. Don't want just anyone adding the bot and sucking up the host's resources!
-	whiteListRead = readIntFileToList("whitelist.txt")
-	if whiteListRead[0] == True:
-		usingWhitelistRestrictions = True
-		whitelistedChatIDs = whiteListRead[1]
-		print("Using whitelist restrictions")
-	else:
-		usingWhitelistRestrictions = False
-		print("Whitelist file not found/processing failed, disabling whitelist restrictions")
-
-	# things to kick a new user for if sent in their 1st text message
-	bannedEntities = ['bot_command', 'url', 'email', 'phone_number']
-
-	# unValidatedTimeToKick -> seconds to wait for user to tap button before kicking them
-	# timeToRestrict -> seconds to restrict permissions for new user after tapping button
-	# validatedTimeToKick -> seconds to keep user in chat after validation without saying anything before kicking
-	# timeToDelete -> seconds before deleting sent messages
-	unValidatedTimeToKick, timeToRestrict, validatedTimeToKick, timeToDelete = 300, 60, 900, 120
 
 	# try getting supported parameters and args from command line
 	try:
@@ -483,6 +457,33 @@ if __name__ == '__main__':
 		if opt in ['--help']:
 			getHelp()
 	print("--------------------------------------\nProgram started at UNIX time:", int(time.time()), "\n")
+
+	# set initial offset to 0, to make telegram send all new updates
+	# pollTimeout -> how long to wait for long poll response in seconds
+	msgOffset, pollTimeout = 0, 20
+
+	# dictionary of new users who need to be kept track of until
+	# new user requirements are satisfied
+	newUsers = {}
+
+	# Chat IDs to work with. Don't want just anyone adding the bot and sucking up the host's resources!
+	whiteListRead = readIntFileToList("whitelist.txt")
+	if whiteListRead[0] == True:
+		usingWhitelistRestrictions = True
+		whitelistedChatIDs = whiteListRead[1]
+		print("Using whitelist restrictions")
+	else:
+		usingWhitelistRestrictions = False
+		print("Whitelist file not found/processing failed, disabling whitelist restrictions")
+
+	# things to kick a new user for if sent in their 1st text message
+	bannedEntities = ['bot_command', 'url', 'email', 'phone_number']
+
+	# unValidatedTimeToKick -> seconds to wait for user to tap button before kicking them
+	# timeToRestrict -> seconds to restrict permissions for new user after tapping button
+	# validatedTimeToKick -> seconds to keep user in chat after validation without saying anything before kicking
+	# timeToDelete -> seconds before deleting sent messages
+	unValidatedTimeToKick, timeToRestrict, validatedTimeToKick, timeToDelete = 300, 60, 900, 120
 
 	bot_id = json.loads(sendRequest(["getMe"])[2])['result']['id']
 	messageFetcher = messageFetcher(token, pollTimeout)
@@ -523,7 +524,9 @@ if __name__ == '__main__':
 
 			processNewUserList()
 		else:
-			# failed to fetch new messages, wait for x seconds then try again
-			time.sleep(30)
+			# failed to fetch new messages, wait for random number of seconds then try again
+			# (may reduce strain on telegram servers when requests are randomly distributed if
+			# they go down, instead of happening at fixed rate along with many other bots etc)
+			time.sleep(random.randint(20, 60))
 		
 
