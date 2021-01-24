@@ -11,10 +11,10 @@ The layers are as follows when a user joins a group with the bot in, with admin 
 3. The user is given permission to send text messages. The user is then prompted to send a plaintext message in a given length of time
 	* If the user fails to send a plaintext message in the given time, they are kicked
 	* If the user sends a message with what telegram detects as a URL, Email, Phone Number or Bot Command, the message is deleted and they are banned (if telegram doesn't detect it, there's less chance of a 1-click interaction/preview, so less risk there)
-	* If the user sends a forwarded text message, it is deleted and they are banned
+	* If the user sends a forwarded text message or location or contact, it is deleted and they are banned
 4. The user has the default permissions given back to them (send messages/media messages/polls/other messages, can add polls and can invite other users)
-5. (NOT IN CURRENT VERSION, IN DEVELOPMENT) All messages sent from user for given length of time are monitored
-	* If the user sends a message containing a URL, Email, Phone Number or Bot Command, or sends a forwarded message of any type (photo/video etc) within the given length of time following their first plaintext message, all their messages since joining are deleted, and they are banned
+5. All messages sent from user for given length of time are monitored
+	* If the user sends a message containing a URL, Email, Phone Number or Bot Command, sends a forwarded message of any type (photo/video etc) or a location or contact within the given length of time following their first plaintext message, all their messages since joining are deleted, and they are banned
 
 ### Whitelist
 To prevent just anyone adding the bot to their own group (and sucking up your server resources/bandwidth), the bot also makes use of a group whitelist, in the form of a text file (whitelist.txt):
