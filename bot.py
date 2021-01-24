@@ -25,7 +25,6 @@ class messageFetcher:
 		updateRequest = sendRequest(["getUpdates", "offset", msgOffset, "timeout", self.pollTimeout, "allowed_updates", updatesToFetch])
 		if updateRequest[0] == True:
 			self.messagesParsed = json.loads(updateRequest[2])
-			print(self.messagesParsed)
 			return True
 		else:
 			print("timestamp:", int(time.time()), "Failed to fetch new messages!", updateRequest[2])
