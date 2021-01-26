@@ -574,6 +574,8 @@ if __name__ == '__main__':
 	# unValidatedTimeToKick -> seconds to wait for user to tap button before kicking them
 	# timeToRestrict -> seconds to restrict permissions for new user after tapping button
 	# validatedTimeToKick -> seconds to keep user in chat after validation without saying anything before kicking
+	# timeToRestrictForwards -> seconds to monitor user's messages after sending 1st message 
+		# (i.e forwarded messages immediately after 1st msg if bot gets through other layers)
 	# timeToDelete -> seconds before deleting sent messages
 	unValidatedTimeToKick, timeToRestrict, validatedTimeToKick, timeToRestrictForwards, timeToDelete = 300, 60, 900, 120, 120
 
