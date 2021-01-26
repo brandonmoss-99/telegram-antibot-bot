@@ -24,6 +24,7 @@ class messageFetcher:
 		updatesToFetch = '["message", "callback_query"]'
 		updateRequest = sendRequest(["getUpdates", "offset", msgOffset, "timeout", self.pollTimeout, "allowed_updates", updatesToFetch])
 		if updateRequest[0] == True:
+			#print(updateRequest[2])
 			self.messagesParsed = json.loads(updateRequest[2])
 			return True
 		else:
@@ -69,6 +70,104 @@ class messageHandler:
 			newMessage = message_new_text(message['message'])
 		elif ('contact' in message['message']) or ('location' in message['message']):
 			newMessage = message_new_locationOrContact(message['message'])
+		if 'entities' in message['message']:
+			for entity in message['message']['entities']:
+				if entity['type'] == "bot_command":
+					#print("BOT COMMAND DETECTED", "offset", entity['offset'], "length", entity['length'])
+					newMessage = message_new_botCommand(message['message'])
+					# break the for loop if a bot command is found. It's possible for a user
+					# to send multiple bot commands in 1 message; only treat the first one
+					# as a bot command, treat any extra commands as text instead
+					break
+
+
+class message_new_botCommand:
+	def __init__(self, message):
+		self.message = message
+		self.getInfo()
+		print(self.botCommandText)
+		commandStringValid = self.checkBotCommandStringValid()
+		commandParamValid = self.checkBotCommandParamValid()
+
+		if commandStringValid and commandParamValid:
+			print("Command:", self.commandParsed, "Param:", self.botCommandParam)
+			commandHandle = commandHandler()
+			print(commandHandle.runCommand(self.commandParsed, self.botCommandParam))
+
+	def getInfo(self):
+		self.message_id = self.message['message_id']
+		self.date = self.message['date']
+		self.chat = self.message['chat']
+		# include optional message data
+		self.isfrom = self.message['from']
+		self.entities = self.message['entities']
+
+		for entity in self.entities:
+			if entity['type'] == "bot_command":
+				self.botCommandOffset = entity['offset']
+				self.botCommandLength = entity['length']
+				self.botCommandText = self.message['text'][self.botCommandOffset:self.botCommandLength]
+				# break the for loop when 1st bot command is found. It's possible for a user
+				# to send multiple bot commands in 1 message; only treat the first one
+				# as a bot command, treat any extra commands as text instead
+				break
+
+	def checkBotCommandStringValid(self):
+		# check what format the command is in, either /command@botusername, or /command &
+		# get the command text on it's own, stripping the leading / and the bot's username if needed
+		if self.botCommandLength > len(bot_username)+2:
+			self.commandParsed = self.botCommandText[1:(self.botCommandLength - len(bot_username)-1)]
+		else:
+			self.commandParsed = self.botCommandText[1:]
+
+		# check if the command sent to the bot is one it can work with
+		if self.commandParsed in botCommandsList:
+			return True
+		else:
+			return False
+
+	def checkBotCommandParamValid(self):
+		try:
+			# get all text in message after 1st bot command
+			self.trailingText = self.message['text'][self.botCommandOffset+self.botCommandLength:]
+			# try to convert the text into an integer to be used
+			self.botCommandParam = int(self.trailingText)
+			return True
+		except Exception as e:
+			return False
+
+
+class commandHandler:
+
+	def runCommand(self, command, param):
+		self.command = command
+		self.param = param
+		# use the command passed in to choose the function to run
+		# return False if a function for that command name isn't found
+		commandToRun = getattr(self, self.command, False)
+		if commandToRun != False:
+			return commandToRun(self.param)
+		else:
+			return [False, "Couldn't find function", self.command]
+
+	# set unvalidatedTimeToKick
+	def setunvalttk(self, param):
+		try:
+			global unValidatedTimeToKick
+			unValidatedTimeToKick = param
+			return [True, "Set unValidatedTimeToKick value to:", param]
+		except Exception as e:
+			return [False, "Failed to set unValidatedTimeToKick value to:", param, "-", str(e)]
+
+	# set unvalidatedTimeToKick
+	def setvalttk(self, param):
+		try:
+			global validatedTimeToKick
+			validatedTimeToKick = param
+			return [True, "Set validatedTimeToKick value to:", param]
+		except Exception as e:
+			return [False, "Failed to set validatedTimeToKick value to:", param, "-", str(e)]
+
 
 
 class message_new_text:
@@ -550,7 +649,7 @@ def loadConfig():
 		except Exception as e:
 			return [False, "Error loading variables from config file: " + str(e)]
 	else:
-		return [False, "Config section doesn't exist!"]
+		return [False, "Error, config section doesn't exist in the file!"]
 
 
 if __name__ == '__main__':
@@ -595,6 +694,11 @@ if __name__ == '__main__':
 	# new user requirements are satisfied
 	newUsers = {}
 
+	botCommands = '[{"command":"setunvalttk", "description":"Set how many seconds user has to press button before being kicked"}, {"command":"setvalttk","description":"Set how many seconds user has to send something after being validated"}]'
+	commandRequest = sendRequest(["setMyCommands", "commands", botCommands])
+	# make a list of just the command names
+	botCommandsList = [item.get('command') for item in json.loads(botCommands)]
+
 	# Chat IDs to work with. Don't want just anyone adding the bot and sucking up the host's resources!
 	whiteListRead = readIntFileToList(whiteListFile)
 	if whiteListRead[0] == True:
@@ -605,13 +709,16 @@ if __name__ == '__main__':
 		usingWhitelistRestrictions = False
 		print("Whitelist file not found/processing failed, disabling whitelist restrictions")
 
-	bot_id = json.loads(sendRequest(["getMe"])[2])['result']['id']
+	botInfo = json.loads(sendRequest(["getMe"])[2])['result']
+	bot_id = botInfo['id']
+	bot_username = botInfo['username']
 	messageFetcher = messageFetcher(token, pollTimeout)
 	messageHandler = messageHandler(token)
 	callback_queryHandler = callback_queryHandler(token)
 
 	# loop, run until program is quit
 	while True:
+		print("unValidatedTimeToKick:", unValidatedTimeToKick)
 		# fetch all the new messages from Telegram servers
 		if messageFetcher.fetchMessages() == True:
 			# for each message in the list of new messages
