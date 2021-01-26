@@ -120,6 +120,7 @@ class message_new_forwarded:
 		self.chat = self.message['chat']
 		self.isfrom = self.message['from'] # optional, but only as not sent when msg sent to channel
 
+
 class message_new_locationOrContact:
 	def __init__(self, message):
 		self.message = message
@@ -519,6 +520,39 @@ def readIntFileToList(path):
 		return [False, []]
 
 
+def loadConfig():
+	with open('config.txt', 'r') as configFile:
+		# try to parse the config file, could throw error if formatted badly
+		try:
+			config = json.load(configFile)
+		except Exception as e:
+			return [False, "Error parsing the config file: " + str(e)]
+
+	# variables to find and set in the global variable dictionary
+		# msgOffset -> initial offset to send to telegram. 0 makes telegram send all new updates
+		# pollTimeout -> how long to wait for long poll response in seconds
+		# whiteListFile -> where is whitelist located
+		# bannedEntities -> things to kick a new user for if sent in their 1st text message
+		# unValidatedTimeToKick -> seconds to wait for user to tap button before kicking them
+		# timeToRestrict -> seconds to restrict permissions for new user after tapping button
+		# validatedTimeToKick -> seconds to keep user in chat after validation without saying anything before kicking
+		# timeToRestrictForwards -> seconds to monitor user's messages after sending 1st message 
+			# (i.e forwarded messages immediately after 1st msg if bot gets through other layers)
+		# timeToDelete -> seconds before deleting sent messages
+	varsToLoad = ["msgOffset", "pollTimeout", "whiteListFile", "bannedEntities", "unValidatedTimeToKick", "timeToRestrict", "validatedTimeToKick", "timeToRestrictForwards", "timeToDelete"]
+	# if the config part of the config file exists
+	if 'config' in config:
+		try:
+			for var in varsToLoad:
+				# create a named global variable with the value found in the config file
+				globals()[var] = config['config'][var]
+			return [True, "Config loaded successfully"]
+		except Exception as e:
+			return [False, "Error loading variables from config file: " + str(e)]
+	else:
+		return [False, "Config section doesn't exist!"]
+
+
 if __name__ == '__main__':
 	# initial token value
 	token = ""
@@ -550,16 +584,19 @@ if __name__ == '__main__':
 			getHelp()
 	print("--------------------------------------\nProgram started at UNIX time:", int(time.time()), "\n")
 
-	# set initial offset to 0, to make telegram send all new updates
-	# pollTimeout -> how long to wait for long poll response in seconds
-	msgOffset, pollTimeout = 0, 20
+	# load configuration file, and check if loaded successfully
+	# stop program if configuration file isn't loaded successfully
+	configLoad = loadConfig()
+	if not configLoad[0]:
+		print(configLoad[1])
+		sys.exit(0)
 
 	# dictionary of new users who need to be kept track of until
 	# new user requirements are satisfied
 	newUsers = {}
 
 	# Chat IDs to work with. Don't want just anyone adding the bot and sucking up the host's resources!
-	whiteListRead = readIntFileToList("whitelist.txt")
+	whiteListRead = readIntFileToList(whiteListFile)
 	if whiteListRead[0] == True:
 		usingWhitelistRestrictions = True
 		whitelistedChatIDs = whiteListRead[1]
@@ -567,17 +604,6 @@ if __name__ == '__main__':
 	else:
 		usingWhitelistRestrictions = False
 		print("Whitelist file not found/processing failed, disabling whitelist restrictions")
-
-	# things to kick a new user for if sent in their 1st text message
-	bannedEntities = ['bot_command', 'url', 'email', 'phone_number']
-
-	# unValidatedTimeToKick -> seconds to wait for user to tap button before kicking them
-	# timeToRestrict -> seconds to restrict permissions for new user after tapping button
-	# validatedTimeToKick -> seconds to keep user in chat after validation without saying anything before kicking
-	# timeToRestrictForwards -> seconds to monitor user's messages after sending 1st message 
-		# (i.e forwarded messages immediately after 1st msg if bot gets through other layers)
-	# timeToDelete -> seconds before deleting sent messages
-	unValidatedTimeToKick, timeToRestrict, validatedTimeToKick, timeToRestrictForwards, timeToDelete = 300, 60, 900, 120, 120
 
 	bot_id = json.loads(sendRequest(["getMe"])[2])['result']['id']
 	messageFetcher = messageFetcher(token, pollTimeout)
