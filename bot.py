@@ -199,8 +199,8 @@ class commandHandler:
 	# set timeToRestrictForwards
 	def setfrstmsgrtime(self, param):
 		try:
-			global timeToDelete
-			timeToDelete = param
+			global timeToRestrictForwards
+			timeToRestrictForwards = param
 			return [True, "Successfully set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds"]
 		except Exception as e:
 			return [False, "Failed to set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds", str(e)]
