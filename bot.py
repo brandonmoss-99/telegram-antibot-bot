@@ -85,14 +85,17 @@ class message_new_botCommand:
 	def __init__(self, message):
 		self.message = message
 		self.getInfo()
-		print(self.botCommandText)
 		commandStringValid = self.checkBotCommandStringValid()
 		commandParamValid = self.checkBotCommandParamValid()
 
 		if commandStringValid and commandParamValid:
-			print("Command:", self.commandParsed, "Param:", self.botCommandParam)
 			commandHandle = commandHandler()
-			print(commandHandle.runCommand(self.commandParsed, self.botCommandParam))
+			commandResponse = commandHandle.runCommand(self.commandParsed, self.botCommandParam)
+			self.reply(commandResponse)
+		elif commandStringValid and not commandParamValid:
+			self.reply([False, "Failed, something is wrong with the value after your command", "Command parameter was invalid"])
+		else:
+			self.reply([False, "Failed, something is wrong with your command and/or value after it", "Command was invalid"])
 
 	def getInfo(self):
 		self.message_id = self.message['message_id']
@@ -136,6 +139,13 @@ class message_new_botCommand:
 		except Exception as e:
 			return False
 
+	def reply(self, commandResponse):
+		response = commandResponse[1]
+		sendResponse = sendRequest(["sendMessage", "chat_id", self.chat['id'], "text", response])
+		# if operation failed, output error
+		if commandResponse[0] == False:
+			print(commandResponse[1], "-", commandResponse[2], ":", self.message['text'])
+
 
 class commandHandler:
 
@@ -155,19 +165,45 @@ class commandHandler:
 		try:
 			global unValidatedTimeToKick
 			unValidatedTimeToKick = param
-			return [True, "Set unValidatedTimeToKick value to:", param]
+			return [True, "Successfully set unvalidated time to kick to " + str(param) + " seconds"]
 		except Exception as e:
-			return [False, "Failed to set unValidatedTimeToKick value to:", param, "-", str(e)]
+			return [False, "Failed to set unvalidated time to kick to " + str(param) + " seconds", str(e)]
 
-	# set unvalidatedTimeToKick
+	# set validatedTimeToKick
 	def setvalttk(self, param):
 		try:
 			global validatedTimeToKick
 			validatedTimeToKick = param
-			return [True, "Set validatedTimeToKick value to:", param]
+			return [True, "Successfully set validated time to kick to " + str(param) + " seconds"]
 		except Exception as e:
-			return [False, "Failed to set validatedTimeToKick value to:", param, "-", str(e)]
+			return [False, "Failed to set validated time to kick to " + str(param) + " seconds", str(e)]
 
+	# set timeToRestrict
+	def setrestricttime(self, param):
+		try:
+			global timeToRestrict
+			timeToRestrict = param
+			return [True, "Successfully set button tap restriction time to " + str(param) + " seconds"]
+		except Exception as e:
+			return [False, "Failed to set button tap restriction time to " + str(param) + " seconds", str(e)]
+
+	# set timeToDelete
+	def setdeletetime(self, param):
+		try:
+			global timeToDelete
+			timeToDelete = param
+			return [True, "Successfully set time to delete my messages to " + str(param) + " seconds"]
+		except Exception as e:
+			return [False, "Failed to set time to delete my messages to " + str(param) + " seconds", str(e)]
+
+	# set timeToRestrictForwards
+	def setfrstmsgrtime(self, param):
+		try:
+			global timeToDelete
+			timeToDelete = param
+			return [True, "Successfully set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds"]
+		except Exception as e:
+			return [False, "Failed to set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds", str(e)]
 
 
 class message_new_text:
@@ -694,7 +730,7 @@ if __name__ == '__main__':
 	# new user requirements are satisfied
 	newUsers = {}
 
-	botCommands = '[{"command":"setunvalttk", "description":"Set how many seconds user has to press button before being kicked"}, {"command":"setvalttk","description":"Set how many seconds user has to send something after being validated"}]'
+	botCommands = '[{"command":"setunvalttk", "description":"Set how many seconds user has to press button before being kicked"}, {"command":"setvalttk","description":"Set how many seconds user has to send something after being validated"}, {"command":"setrestricttime","description":"Set how many seconds a user is restricted for after being validated"}, {"command":"setdeletetime","description":"Set how many seconds until bot messages are automatically deleted (after task is done)"}, {"command":"setfrstmsgrtime","description":"Set how many seconds to monitor a new users messages for something prohibited after sending their 1st message"}]'
 	commandRequest = sendRequest(["setMyCommands", "commands", botCommands])
 	# make a list of just the command names
 	botCommandsList = [item.get('command') for item in json.loads(botCommands)]
@@ -718,7 +754,6 @@ if __name__ == '__main__':
 
 	# loop, run until program is quit
 	while True:
-		print("unValidatedTimeToKick:", unValidatedTimeToKick)
 		# fetch all the new messages from Telegram servers
 		if messageFetcher.fetchMessages() == True:
 			# for each message in the list of new messages
