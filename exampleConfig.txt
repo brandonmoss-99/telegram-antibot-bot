@@ -1,0 +1,33 @@
+#############################################
+# To function correctly, rename this file
+# to config.txt, and remove all of this text,
+# so that the opening bracket below is
+# on the first line, with nothing else above
+#############################################
+{
+    "config": {
+        "bot": {
+            "msgOffset": 0,
+            "pollTimeout": 20,
+            "whiteListFile": "whitelist.txt"
+        },
+        "groups": {
+            "default": {
+                "id": "0",
+                "bannedEntities": [
+                    "bot_command",
+                    "url",
+                    "email",
+                    "phone_number"
+                ],
+                "unValidatedTimeToKick": 120,
+                "timeToRestrict": 60,
+                "validatedTimeToKick": 900,
+                "timeToRestrictForwards": 120,
+                "timeToDelete": 120
+            },
+            "custom": {
+            }
+        }
+    }
+}
