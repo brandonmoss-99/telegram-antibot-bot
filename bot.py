@@ -388,7 +388,8 @@ class message_new_chat_members:
 			'timeSetTextRestrictions':None,
 			'chatId':self.chat_id, 
 			'joinedMessage':self.message_id,
-			'sentMessages':[]
+			'sentMessages':[],
+			'welcomeMsgid':[]
 			}
 		# run reply method to send reply to user
 		self.reply(member)
@@ -404,7 +405,8 @@ class message_new_chat_members:
 		if welcome[0] == True:
 			# add message id of the welcome message, to know what message
 			# to modify/delete later on
-			newUsers[member['id'] + self.chat['id']]['welcomeMsgid'] = json.loads(welcome[2])['result']['message_id']
+			#newUsers[member['id'] + self.chat['id']]['welcomeMsgid'] = json.loads(welcome[2])['result']['message_id']
+			newUsers[member['id'] + self.chat['id']]['welcomeMsgid'].append(json.loads(welcome[2])['result']['message_id'])
 
 
 class callback_queryHandler:
@@ -443,7 +445,14 @@ class message_new_callback_query:
 				newUsers[self.query_from['id'] + self.query_message['chat']['id']]['timePassedValidation'] = int(time.time())
 				# edit message contents
 				validatedMessage = "Yay,%20" + self.query_from['first_name'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
-				sendRequest(["editMessageText", "chat_id", self.query_message['chat']['id'], "message_id", self.query_message['message_id'], "text", validatedMessage])
+				#sendRequest(["editMessageText", "chat_id", self.query_message['chat']['id'], "message_id", self.query_message['message_id'], "text", validatedMessage])
+				########
+				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage])
+				if newTextMessageRequest[0] == True:
+					newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", self.query_message['chat']['id'], "message_id", newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].pop(0)])
+
+
 			except Exception as e:
 				print("timestamp:", int(time.time()), "Couldn't edit user", self.query_from['id'], "dictionary entry: ", str(e))
 		# if the IDs don't match up
@@ -547,9 +556,15 @@ def processNewUserList():
 			(currentUnixTime - newUsers[key]['timeJoined'] > groupInfo['unValidatedTimeToKick']) and 
 			(newUsers[key]['timeFailedValidation'] == None)):
 				newUsers[key]['timeFailedValidation'] = currentUnixTime
-				editRequest = sendRequest(["editMessageText", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'], "text", newUsers[key]['firstName'] + "%20didn%27t press the button in time, and was kicked"])
-				if editRequest[0] == False:
-					print("timestamp:", int(time.time()), "Failed to edit message",newUsers[key]['welcomeMsgid'],editRequest[2])
+
+				# send new message. If that succeeds, add it to current messages 
+				# shown in chat, then try and delete the last message sent
+				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", newUsers[key]['firstName'] + "%20didn%27t press the button in time, and was kicked"])
+				if newTextMessageRequest[0] == True:
+					newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'][len(newUsers[key]['welcomeMsgid'])-2], ":", deleteRequest[2])
 				# kick user
 				kickRequest = sendRequest(["unbanChatMember", "chat_id", newUsers[key]['chatId'], "user_id", newUsers[key]['id']])
 				if kickRequest[0] == False:
@@ -584,11 +599,11 @@ def processNewUserList():
 			(newUsers[key]['hasSentBadMessage'] == True) and 
 			(newUsers[key]['timeSentBadMessage'] != None) and
 			(currentUnixTime - newUsers[key]['timeSentBadMessage'] > groupInfo['timeToDelete']))):
-				
 				# cleanup messages here
-				deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid']])
-				if deleteRequest[0] == False:
-					print("timestamp:", int(time.time()), "Couldn't delete message", newUsers[key]['welcomeMsgid'], ":", deleteRequest[2])
+				for msg in range(len(newUsers[key]['welcomeMsgid'])):
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'][msg-1]])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'][msg-1], ":", deleteRequest[2])
 				deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['joinedMessage']])
 				if deleteRequest[0] == False:
 					print("timestamp:", int(time.time()), "Couldn't delete message", newUsers[key]['joinedMessage'], ":", deleteRequest[2])
@@ -605,12 +620,16 @@ def processNewUserList():
 			(newUsers[key]['hasSentBadMessage'] == False) and
 			(currentUnixTime - newUsers[key]['timeJoined'] > groupInfo['validatedTimeToKick']) and 
 			(newUsers[key]['timeExpiredMessageSendThresh'] == None)):
-
 				newUsers[key]['timeExpiredMessageSendThresh'] = currentUnixTime
 
-				editRequest = sendRequest(["editMessageText", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'], "text", newUsers[key]['firstName'] + "%20didn%27t say anything in the time threshold, and was kicked"])
-				if editRequest[0] == False:
-					print("timestamp:", int(time.time()), "Failed to edit message",newUsers[key]['welcomeMsgid'],editRequest[2])
+				# send new message. If that succeeds, add it to current messages 
+				# shown in chat, then try and delete the last message sent
+				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", newUsers[key]['firstName'] + "%20didn%27t say anything in the time threshold, and was kicked"])
+				if newTextMessageRequest[0] == True:
+					newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'][len(newUsers[key]['welcomeMsgid'])-2], ":", deleteRequest[2])
 				
 				# kick user
 				kickRequest = sendRequest(["unbanChatMember", "chat_id", newUsers[key]['chatId'], "user_id", newUsers[key]['id']])
@@ -630,7 +649,6 @@ def processNewUserList():
 			(newUsers[key]['hasSentGoodMessage'] == False) and 
 			(newUsers[key]['hasSentBadMessage'] == False) and
 			(currentUnixTime - newUsers[key]['timeJoined'] < groupInfo['validatedTimeToKick'])):
-
 				if ((currentUnixTime - newUsers[key]['timePassedValidation'] >= groupInfo['timeToRestrict']) and 
 					(newUsers[key]['hasSetTextRestrictions'] == False)):
 					newMemberRestrictions = json.dumps({
@@ -644,9 +662,14 @@ def processNewUserList():
 						"can_pin_messages": False
 						})
 
-					editRequest = sendRequest(["editMessageText", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'], "text", newUsers[key]['firstName'] + ",%20your restriction time is over!%0A%0APlease send a plain text message like a hello within the next%20" + str(int(groupInfo['validatedTimeToKick']/60)) + "%20minutes, to lift your other restrictions%0A%0A%28I%27d let you send a sticker if the bot API allowed just text and stickers%29%20%3A%29%0A%0ANote%3A Sending any of the following may get you banned - URL, Email, Phone Number, Forwarded Message, Contact, Location or a Bot Command"])
-					if editRequest[0] == False:
-						print("timestamp:", int(time.time()), "Failed to edit message",newUsers[key]['welcomeMsgid'],editRequest[2])
+					# send new message. If that succeeds, add it to current messages 
+					# shown in chat, then try and delete the last message sent
+					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", newUsers[key]['firstName'] + ",%20your restriction time is over!%0A%0APlease send a plain text message like a hello within the next%20" + str(int(groupInfo['validatedTimeToKick']/60)) + "%20minutes, to lift your other restrictions%0A%0A%28I%27d let you send a sticker if the bot API allowed just text and stickers%29%20%3A%29%0A%0ANote%3A Sending any of the following may get you banned - URL, Email, Phone Number, Forwarded Message, Contact, Location or a Bot Command"])
+					if newTextMessageRequest[0] == True:
+						newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
+						deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
+						if deleteRequest[0] == False:
+							print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'][len(newUsers[key]['welcomeMsgid'])-2], ":", deleteRequest[2])
 					
 					permEditRequest = sendRequest(["restrictChatMember", "chat_id", newUsers[key]['chatId'], "user_id", newUsers[key]['id'], "permissions", newMemberRestrictions, "until_date", currentUnixTime])
 					if permEditRequest[0] == True:
@@ -671,11 +694,16 @@ def processNewUserList():
 					if deleteRequest[0] == False:
 						print("timestamp:", int(time.time()), "Couldn't delete message ID", userMessage, ":", deleteRequest[2])
 
-				editRequest = sendRequest(["editMessageText", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'], "text", newUsers[key]['firstName'] + "%20sent something not permitted for their first message, and was banned"])
-				if editRequest[0] == False:
-					print("timestamp:", int(time.time()), "Failed to edit message",newUsers[key]['welcomeMsgid'],editRequest[2])
+				# send new message. If that succeeds, add it to current messages 
+				# shown in chat, then try and delete the last message sent
+				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", newUsers[key]['firstName'] + "%20sent something not permitted for their first message, and was banned"])
+				if newTextMessageRequest[0] == True:
+					newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'][len(newUsers[key]['welcomeMsgid'])-2], ":", deleteRequest[2])
 				
-				banRequest = sendRequest(["unbanChatMember", "chat_id", newUsers[key]['chatId'], "user_id", newUsers[key]['id']])
+				banRequest = sendRequest(["kickChatMember", "chat_id", newUsers[key]['chatId'], "user_id", newUsers[key]['id']])
 				if banRequest[0] == False:
 					# if the ban failed, output request contents
 					print("timestamp:", int(time.time()), "Couldn't ban user_id", newUsers[key]['id'], ":", banRequest[2])
@@ -689,11 +717,15 @@ def processNewUserList():
 			newUsers[key]['timeLiftedRestrictions'] == None):
 				newUsers[key]['timeLiftedRestrictions'] = currentUnixTime
 				
-				# edit message to let know not to send forwarded message for additional time
-				editRequest = sendRequest(["editMessageText", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'], "text", "Welcome%20" + newUsers[key]['firstName'] + "%21 %0A%0APlease refrain from sending any forwarded messages, locations or contacts here for another " + str(int((groupInfo['timeToRestrictForwards']/60)+1)) + " minutes%21 %28When this message is deleted%29"])
-				if editRequest[0] == False:
-					print("timestamp:", int(time.time()), "Failed to edit message",newUsers[key]['welcomeMsgid'],editRequest[2])
-				
+				# send new message. If that succeeds, add it to current messages 
+				# shown in chat, then try and delete the last message sent
+				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", "Welcome%20" + newUsers[key]['firstName'] + "%21 %0A%0APlease refrain from sending any forwarded messages, locations or contacts here for another " + str(int((groupInfo['timeToRestrictForwards']/60)+1)) + " minutes%21 %28When this message is deleted%29"])
+				if newTextMessageRequest[0] == True:
+					newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'][len(newUsers[key]['welcomeMsgid'])-2], ":", deleteRequest[2])
+
 				# give permanent privilages
 				newMemberRestrictions = json.dumps({
 					"can_send_messages": True, 
@@ -723,9 +755,10 @@ def processNewUserList():
 			(currentUnixTime - newUsers[key]['timeSentFirstMessage'] > groupInfo['timeToRestrictForwards'] + 60)):
 
 				# delete welcome message. Don't delete join message, want to see in past when a genuine user joins the chat
-				deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid']])
-				if deleteRequest[0] == False:
-					print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'], ":", deleteRequest[2])
+				for msg in range(len(newUsers[key]['welcomeMsgid'])):
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'][msg-1]])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[key]['welcomeMsgid'], ":", deleteRequest[2])
 				
 				# mark newUser for deletion from dictionary
 				toDelete.append(key)
