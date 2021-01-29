@@ -367,13 +367,15 @@ class message_new_chat_members:
 		newMember_first_name = member['first_name']
 		if 'last_name' in self.message['new_chat_members']:
 			newMember_last_name = member['last_name']
-		if 'username' in self.message['new_chat_members']:
-			newMember_username = member['username']
+		print("Message: ", self.message['new_chat_members'])
+
+		newMember_username = self.message['new_chat_members'][0]['username'] if 'username' in self.message['new_chat_members'][0] else None
 
 		# check the id isn't the bot's id, prevent the bot kicking itself
 		if newMember_id != bot_id:
 			newUsers[newMember_id + self.chat['id']] = {
 			'id':newMember_id,
+			'username': newMember_username,
 			'firstName':newMember_first_name, 
 			'timeJoined':self.date, 'passedValidation':False, 
 			'timePassedValidation':None, 
@@ -398,10 +400,14 @@ class message_new_chat_members:
 		# create verify part of prompt
 		verifyPrompt = json.dumps({
 			"inline_keyboard":[[{"text": "I'm not a robot!", "callback_data": str(member['id'])+str(self.chat['id'])+"Success"}]]})
-		# create welcom text part of prompt
-		welcomeMsg = "Hiya,%20" + member['first_name'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
-		# send welcomeverify prompt to user
-		welcome = sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "reply_markup", verifyPrompt])
+		# create welcome text part of prompt
+		if newUsers[member['id'] + self.chat['id']]['username'] != None:
+			welcomeMsg = "Hiya, @" + newUsers[member['id'] + self.chat['id']]['username'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
+			welcome = sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "entities", "[{'type':'mention', 'offset':6, 'length':" + str(len(member['username'])) + "}]" ,"reply_markup", verifyPrompt])
+		else:
+			welcomeMsg = "Hiya, " + newUsers[member['id'] + self.chat['id']]['first_name'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
+			# send welcomeverify prompt to user
+			welcome = sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "reply_markup", verifyPrompt])
 		if welcome[0] == True:
 			# add message id of the welcome message, to know what message
 			# to modify/delete later on
@@ -443,11 +449,16 @@ class message_new_callback_query:
 				# fill in the time of validation for permission managment/validatedTimeToKick
 				newUsers[self.query_from['id'] + self.query_message['chat']['id']]['passedValidation'] = True
 				newUsers[self.query_from['id'] + self.query_message['chat']['id']]['timePassedValidation'] = int(time.time())
-				
+
 				# send new message. If that succeeds, add it to current messages 
 				# shown in chat, then try and delete the last message sent
-				validatedMessage = "Yay,%20" + self.query_from['first_name'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
-				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage])
+				if newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'] != None:
+					validatedMessage = "Yay, @" + newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
+					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage, "entities", "[{'type':'mention', 'offset':5, 'length':" + str(len(newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'])) + "}]"])
+				else:
+					validatedMessage = "Yay, " + self.query_from['first_name'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
+					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage])
+
 				if newTextMessageRequest[0] == True:
 					newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
 					deleteRequest = sendRequest(["deleteMessage", "chat_id", self.query_message['chat']['id'], "message_id", newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].pop(len(newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'])-2)])
@@ -666,7 +677,10 @@ def processNewUserList():
 
 					# send new message. If that succeeds, add it to current messages 
 					# shown in chat, then try and delete the last message sent
-					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", newUsers[key]['firstName'] + ",%20your restriction time is over!%0A%0APlease send a plain text message like a hello within the next%20" + str(int(groupInfo['validatedTimeToKick']/60)) + "%20minutes, to lift your other restrictions%0A%0A%28I%27d let you send a sticker if the bot API allowed just text and stickers%29%20%3A%29%0A%0ANote%3A Sending any of the following may get you banned - URL, Email, Phone Number, Forwarded Message, Contact, Location or a Bot Command"])
+					if newUsers[key]['username'] != None:
+						newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", "@" + newUsers[key]['username'] + ",%20your restriction time is over!%0A%0APlease send a plain text message like a hello within the next%20" + str(int(groupInfo['validatedTimeToKick']/60)) + "%20minutes, to lift your other restrictions%0A%0A%28I%27d let you send a sticker if the bot API allowed just text and stickers%29%20%3A%29%0A%0ANote%3A Sending any of the following may get you banned - URL, Email, Phone Number, Forwarded Message, Contact, Location or a Bot Command", "entities", "[{'type':'mention', 'offset':0, 'length':" + str(len(newUsers[key]['username'])) + "}]"])
+					else:
+						newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", newUsers[key]['firstName'] + ",%20your restriction time is over!%0A%0APlease send a plain text message like a hello within the next%20" + str(int(groupInfo['validatedTimeToKick']/60)) + "%20minutes, to lift your other restrictions%0A%0A%28I%27d let you send a sticker if the bot API allowed just text and stickers%29%20%3A%29%0A%0ANote%3A Sending any of the following may get you banned - URL, Email, Phone Number, Forwarded Message, Contact, Location or a Bot Command"])
 					if newTextMessageRequest[0] == True:
 						newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
 						deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
@@ -721,7 +735,10 @@ def processNewUserList():
 				
 				# send new message. If that succeeds, add it to current messages 
 				# shown in chat, then try and delete the last message sent
-				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", "Welcome%20" + newUsers[key]['firstName'] + "%21 %0A%0APlease refrain from sending any forwarded messages, locations or contacts here for another " + str(int((groupInfo['timeToRestrictForwards']/60)+1)) + " minutes%21 %28When this message is deleted%29"])
+				if newUsers[key]['username'] != None:
+					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", "Welcome @" + newUsers[key]['username'] + "%21 %0A%0APlease refrain from sending any forwarded messages, locations or contacts here for another " + str(int((groupInfo['timeToRestrictForwards']/60)+1)) + " minutes%21 %28When this message is deleted%29", "entities", "[{'type':'mention', 'offset':8, 'length':" + str(len(newUsers[key]['username'])) + "}]"])
+				else:
+					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", newUsers[key]['chatId'], "text", "Welcome " + newUsers[key]['firstName'] + "%21 %0A%0APlease refrain from sending any forwarded messages, locations or contacts here for another " + str(int((groupInfo['timeToRestrictForwards']/60)+1)) + " minutes%21 %28When this message is deleted%29"])
 				if newTextMessageRequest[0] == True:
 					newUsers[key]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
 					deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[key]['chatId'], "message_id", newUsers[key]['welcomeMsgid'].pop(len(newUsers[key]['welcomeMsgid'])-2)])
@@ -882,6 +899,7 @@ if __name__ == '__main__':
 
 	# loop, run until program is quit
 	while True:
+		print(newUsers)
 		# fetch all the new messages from Telegram servers
 		if messageFetcher.fetchMessages() == True:
 			# for each message in the list of new messages
