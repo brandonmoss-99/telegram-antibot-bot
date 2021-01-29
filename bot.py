@@ -443,14 +443,16 @@ class message_new_callback_query:
 				# fill in the time of validation for permission managment/validatedTimeToKick
 				newUsers[self.query_from['id'] + self.query_message['chat']['id']]['passedValidation'] = True
 				newUsers[self.query_from['id'] + self.query_message['chat']['id']]['timePassedValidation'] = int(time.time())
-				# edit message contents
+				
+				# send new message. If that succeeds, add it to current messages 
+				# shown in chat, then try and delete the last message sent
 				validatedMessage = "Yay,%20" + self.query_from['first_name'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
-				#sendRequest(["editMessageText", "chat_id", self.query_message['chat']['id'], "message_id", self.query_message['message_id'], "text", validatedMessage])
-				########
 				newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage])
 				if newTextMessageRequest[0] == True:
 					newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].append(json.loads(newTextMessageRequest[2])['result']['message_id'])
-					deleteRequest = sendRequest(["deleteMessage", "chat_id", self.query_message['chat']['id'], "message_id", newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].pop(0)])
+					deleteRequest = sendRequest(["deleteMessage", "chat_id", self.query_message['chat']['id'], "message_id", newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'].pop(len(newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'])-2)])
+					if deleteRequest[0] == False:
+						print("timestamp:", int(time.time()), "Failed to delete message", newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'][len(newUsers[self.query_from['id'] + self.query_message['chat']['id']]['welcomeMsgid'])-2], ":", deleteRequest[2])
 
 
 			except Exception as e:
