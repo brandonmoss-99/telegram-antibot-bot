@@ -367,7 +367,6 @@ class message_new_chat_members:
 		newMember_first_name = member['first_name']
 		if 'last_name' in self.message['new_chat_members']:
 			newMember_last_name = member['last_name']
-		print("Message: ", self.message['new_chat_members'])
 
 		newMember_username = self.message['new_chat_members'][0]['username'] if 'username' in self.message['new_chat_members'][0] else None
 
@@ -899,7 +898,6 @@ if __name__ == '__main__':
 
 	# loop, run until program is quit
 	while True:
-		print(newUsers)
 		# fetch all the new messages from Telegram servers
 		if messageFetcher.fetchMessages() == True:
 			# for each message in the list of new messages
