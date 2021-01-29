@@ -16,8 +16,33 @@ The layers are as follows when a user joins a group with the bot in, with admin 
 5. All messages sent from user for given length of time are monitored
 	* If the user sends a message containing a URL, Email, Phone Number or Bot Command, sends a forwarded message of any type (photo/video etc) or a location or contact within the given length of time following their first plaintext message, all their messages since joining are deleted, and they are banned
 
+### Configuration & Commands
+A config file (config.txt) should exist in order for the bot to function. An example config, exampleConfig.txt is included, which can be modified and renamed. This config file is loaded up when the bot starts, and contains/can contain per-group properties can be changed and added via bot commands.
+
+The following data is stored in the config file:
+- Bot config data:
+    - Initial message offset for telegram message fetching via long polling
+    - Time delay to wait for a long polling response before requesting another
+    - Location of the whitelist file to use (relative to the bot.py file)
+- Default/custom group properties:
+    - The group id
+    - The banned entities for a 1st text message send (URL, email, phone number etc)
+    - Seconds to wait for user to press 'I'm not a robot!' button before kicking
+    - Seconds to restrict a user after pressing the 'I'm not a robot!' button
+    - Seconds to wait for user to send their 1st message after their restriction before kicking
+    - Seconds to monitor new user's messages after sending 1st message for anything prohibited
+    - Seconds to wait after success/failed user join before deleting bot messages from chat
+
+The following properties can be modified via in-group commands:
+- Seconds to wait for user to press 'I'm not a robot!' button before kicking
+- Seconds to restrict a user after pressing the 'I'm not a robot!' button
+- Seconds to wait for user to send their 1st message after their restriction before kicking
+- Seconds to monitor new user's messages after sending 1st message for anything prohibited
+- Seconds to wait after success/failed user join before deleting bot messages from chat
+
+
 ### Whitelist
-To prevent just anyone adding the bot to their own group (and sucking up your server resources/bandwidth), the bot also makes use of a group whitelist, in the form of a text file (whitelist.txt):
+To prevent just anyone adding the bot to their own group (and sucking up your server resources/bandwidth), the bot also makes use of a group whitelist, in the form of a text file (whitelist.txt by default, can be changed in the config file if required):
 - If whitelist.txt is present, the bot will switch over to whitelist mode. If it recieves an incoming message from a group not in its whitelist (including the message when it is added to the group), it will send a message to that group saying it doesn't support being added to any group, and leaves it
 - If whitelist.txt is not present (or it fails to process whitelist.txt), the bot will switch over to non-whitelist mode. It will handle incoming joins/messages from any group it's been added to
 
