@@ -322,20 +322,28 @@ class message_new_text:
 	def __init__(self, message):
 		self.message = message
 		self.getInfo()
+
 		# if the message sent is from a new user in the newUsers dictionary,
-		# set their hasSentGoodMessage property to True, to mark them to be
-		# deleted from the dictionary
+		# check if it's their 1st message or not, and then check if it contains
+		# any entities banned for their 1st/until monitoring time is up
 		if self.isfrom['id'] + self.chat['id'] in newUsers:
 			# add message to newUsers list of messages
 			newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
-			# if user has sent an entity in their 1st text message, delete their message and mark for kicking
-			if ('entities' in self.message) and (self.message['entities'][0]['type'] in config.getCustomGroupConfig(self.chat['id'])['bannedEntities']):
-				newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
+			# if the user hasn't sent their 1st message yet
+			if newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None:
+				newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] = int(time.time())
+				# if user has sent an entity in their 1st text message, 
+				# delete their message and mark for kicking
+				if ('entities' in self.message) and (self.message['entities'][0]['type'] in config.getCustomGroupConfig(self.chat['id'])['bannedEntities']):
+					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
+				else:
+					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentGoodMessage'] = True
+			# if user has already sent 1st message, check if any
+			# entities are in message that are banned until 
+			# the monitoring time is up
 			else:
-				newUsers[self.isfrom['id'] + self.chat['id']]['hasSentGoodMessage'] = True
-				# if the user hasn't already sent a message, set their first message time to current unix time
-				if newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None:
-					newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] = int(time.time())
+				if ('entities' in self.message) and (self.message['entities'][0]['type'] in config.getCustomGroupConfig(self.chat['id'])['toMonitorAfterFirstSend']['bannedEntities']):
+					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
 
 	def getInfo(self):
 		# extract always included message data
@@ -351,15 +359,17 @@ class message_new_forwarded:
 		self.message = message
 		self.getInfo()
 
-		# if user has sent forwarded message, check if they're still in newUsers
-		# if not sent a message yet, or their first message was sent less than
-		# x mins ago, delete their message and mark for kicking
+		# If user has sent forwarded message, check if they're still in newUsers.
+		# If not sent a message yet, or the group configuration says to prohibit
+		# forwarding messages for time after 1st msg send, and their first message
+		# was sent less than that time ago, delete their message and mark for kicking
 		if self.isfrom['id'] + self.chat['id'] in newUsers:
 			if ((newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None) or 
-				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= config.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards'])):
+				("forwardedMessage" in config.getCustomGroupConfig(self.chat['id'])['toMonitorAfterFirstSend']['types'] and int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= config.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards'])):
 					# add message to newUsers list of messages
 					newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
 					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
+
 
 	def getInfo(self):
 		self.message_id = self.message['message_id']
@@ -1048,6 +1058,7 @@ if __name__ == '__main__':
 
 	# loop, run until program is quit
 	while True:
+		print(config.getCustomGroupConfig(0)['toMonitorAfterFirstSend']['types'])
 		# fetch all the new messages from Telegram servers
 		if messageFetcher.fetchMessages() == True:
 			# for each message in the list of new messages
