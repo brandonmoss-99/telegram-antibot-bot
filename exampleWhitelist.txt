@@ -1,7 +1,16 @@
 #### EXAMPLE WHITELIST FILE ####
-# Your whitelist needs to have the filename 'whitelist.txt' (excluding the quotes), 
-# and be in the same directory as bot.py #
-# Add new groups to your whitelist by adding their integer group ID #
+# By default, your whitelist should be renamed 
+# 'whitelist.txt' (excluding the quotes),
+# and be in the same directory as bot.py.
+# The filename loaded can be modified in the
+# configuration file
+
+# Add new groups to your whitelist by
+# adding their integer group ID
+
+# Everything including the # line
+# below should be removed for your whitelist,
+# with the first line being the first group ID
 ################################
 0123456789012
 1234567890123
