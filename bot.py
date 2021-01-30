@@ -1,4 +1,4 @@
-import requests, json, random, sys, getopt, time, os, copy
+import requests, json, random, sys, getopt, time, os, copy, datetime
 from urllib import parse
 
 def getHelp():
@@ -506,8 +506,6 @@ class message_new_left_members:
 			if deleteRequest[0] == False:
 				print("timestamp:", int(time.time()), "Couldn't delete message", self.message_id, "from chat", self.chat['id'],":", banRequest[2])
 
-
-
 	def getInfo(self):
 		# extract always included message data
 		self.message_id = self.message['message_id']
@@ -960,13 +958,13 @@ if __name__ == '__main__':
 	# load configurations
 	config = config('config.txt')
 	print(config.loadConfig()[1])
-	print(config.loadBotConfig()[1])
+	botConfLoad = config.loadBotConfig()
 	defaultConfLoad = config.loadDefaultGroupConfig()
 	customConfLoad = config.loadGroupConfigs()
-	# if the default group config or custom group config can't be found
+	# if the bot, default group or custom group configs can't be found
 	# stop program, needs to be fixed
-	if not defaultConfLoad[0] or not customConfLoad[0]:
-		print("Default config: ", defaultConfLoad[1], "Custom group config: ", customConfLoad[1])
+	if not botConfLoad[0] or not defaultConfLoad[0] or not customConfLoad[0]:
+		print("Bot config: ", botConfLoad[1], "Default config: ", defaultConfLoad[1], "Custom group config: ", customConfLoad[1])
 		sys.exit(0)
 
 
