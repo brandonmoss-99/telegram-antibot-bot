@@ -17,6 +17,7 @@ The layers are as follows when a user joins a group with the bot in, with admin 
 	* If the user sends a message containing a URL, Email, Phone Number or Bot Command, sends a forwarded message of any type (photo/video etc) or a location or contact within the given length of time following their first plaintext message, all their messages since joining are deleted, and they are banned
 
 ### Configuration & Commands
+#### Configuration
 A config file (config.txt) should exist in order for the bot to function. An example config, exampleConfig.txt is included, which can be modified and renamed. This config file is loaded up when the bot starts, and contains/can contain per-group properties can be changed and added via bot commands.
 
 The following data is stored in the config file:
@@ -32,8 +33,16 @@ The following data is stored in the config file:
     - Seconds to wait for user to send their 1st message after their restriction before kicking
     - Seconds to monitor new user's messages after sending 1st message for anything prohibited
     - Seconds to wait after success/failed user join before deleting bot messages from chat
+    - Is the bot enabled/disabled in the group
+    - Is the group in lockdown mode
 
+#### Commands
 The following properties can be modified via in-group commands:
+- Enable the bot in the group (already enabled by default)
+- Disable the bot in the group (if you want to add someone without the bot process taking place)
+- Lockdown the group, will auto-ban every new user who joins the group whilst enabled
+    - If the bot is disabled in the group, it will be automatically re-enabled to act
+- Disable lockdown on the group
 - Seconds to wait for user to press 'I'm not a robot!' button before kicking
 - Seconds to restrict a user after pressing the 'I'm not a robot!' button
 - Seconds to wait for user to send their 1st message after their restriction before kicking

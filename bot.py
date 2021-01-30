@@ -62,14 +62,17 @@ class messageHandler:
 		self.token = token
 
 	def handleMessage(self, message):
-		if 'new_chat_members' in message['message']:
-			newMessage = message_new_chat_members(message['message'])
-		elif 'forward_from' in message['message']:
-			newMessage = message_new_forwarded(message['message'])
-		elif 'text' in message['message']:
-			newMessage = message_new_text(message['message'])
-		elif ('contact' in message['message']) or ('location' in message['message']):
-			newMessage = message_new_locationOrContact(message['message'])
+		# if the chat the message was sent from is active, process message
+		if config.getCustomGroupConfig(message['message']['chat']['id'])['active']:
+			if 'new_chat_members' in message['message']:
+				newMessage = message_new_chat_members(message['message'])
+			elif 'forward_from' in message['message']:
+				newMessage = message_new_forwarded(message['message'])
+			elif 'text' in message['message']:
+				newMessage = message_new_text(message['message'])
+			elif ('contact' in message['message']) or ('location' in message['message']):
+				newMessage = message_new_locationOrContact(message['message'])
+		# still allow commands to be processed, even when inactive in chat
 		if 'entities' in message['message']:
 			for entity in message['message']['entities']:
 				if entity['type'] == "bot_command":
@@ -142,20 +145,41 @@ class message_new_botCommand:
 			self.commandParsed = self.botCommandText[1:]
 
 		# check if the command sent to the bot is one it can work with
-		if self.commandParsed in botCommandsList:
+		if self.commandParsed in list(botCommandsInfo):
 			return True
 		else:
 			return False
 
 	def checkBotCommandParamValid(self):
-		try:
-			# get all text in message after 1st bot command
-			self.trailingText = self.message['text'][self.botCommandOffset+self.botCommandLength:]
-			# try to convert the text into an integer to be used
-			self.botCommandParam = int(self.trailingText)
+		# checking for a positive integer requirement
+		if botCommandsInfo[self.commandParsed]['paramType'] == 'posint':
+			try:
+				# get all text in message after 1st bot command
+				self.trailingText = self.message['text'][self.botCommandOffset+self.botCommandLength:]
+				# try to convert the text into an integer to be used
+				self.botCommandParam = int(self.trailingText)
+				if self.botCommandParam > 0:
+					return True
+				else:
+					return False
+			except Exception as e:
+				return False
+
+		# checking for a boolean requirement
+		elif botCommandsInfo[self.commandParsed]['paramType'] == 'bool':
+			try:
+				# get all text in message after 1st bot command
+				self.trailingText = self.message['text'][self.botCommandOffset+self.botCommandLength:]
+				self.botCommandParam = bool(self.trailingText)
+				return True
+			except Exception as e:
+				return False
+
+		# if command doesn't require any parameter
+		elif botCommandsInfo[self.commandParsed]['paramType'] == 'none':
+			# ignore whatever parameter was set, probably valid
+			self.botCommandParam = None
 			return True
-		except Exception as e:
-			return False
 
 	def getChatInfo(self):
 		groupConfig = config.getCustomGroupConfig(self.chat['id'])
@@ -248,6 +272,49 @@ class commandHandler:
 		except Exception as e:
 			return [False, "Failed to set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds", str(e)]
 
+	def disable(self, param, groupConfig):
+		try:
+			self.groupConfig['active'] = False
+			config.setCustomGroupConfig(self.groupConfig)
+			return [True, "Successfully disabled the bot from responding to new events"]
+		except Exception as e:
+			return [False, "Failed to disable the bot from responding to new events ", str(e)]
+
+	def enable(self, param, groupConfig):
+		try:
+			self.groupConfig['active'] = True
+			config.setCustomGroupConfig(self.groupConfig)
+			return [True, "Successfully enabled the bot to respond to new events"]
+		except Exception as e:
+			return [False, "Failed to enable the bot to respond to new events ", str(e)]
+
+	# Use with caution! A lockdown will auto-ban every new user joining until disabled!
+	def lockdown(self, param, groupConfig):
+		try:
+			self.groupConfig['inLockdown'] = True
+			config.setCustomGroupConfig(self.groupConfig)
+			# if the bot is not responding to new events when a lockdown
+			# command is sent, re-enable the bot to respond
+			if self.groupConfig['active'] == False:
+				enableCommand = self.enable(None, self.groupConfig)
+				# if bot was successfully re-enabled, enter lockdown
+				if enableCommand[0] == True:
+					return [True, "\U0001F6A8 !!! LOCKDOWN ENABLED !!! \U0001F6A8 %0A%0ABot was automatically re-enabled! %0A%0AAll new users will be insta-banned until disabled!"]
+				else:
+					return [False, "Lockdown failed! Couldn't automatically re-enable the bot! ", str(e)]
+			else:
+				return [True, "\U0001F6A8 !!! LOCKDOWN ENABLED !!! \U0001F6A8 %0A%0AAll new users will be insta-banned until disabled!"]
+		except Exception as e:
+			return [False, "Lockdown failed! Admin to manually disable global group permissions! ", str(e)]
+
+	def disablelockdown(self, param, groupConfig):
+		try:
+			self.groupConfig['inLockdown'] = False
+			config.setCustomGroupConfig(self.groupConfig)
+			return [True, "Lockdown successfully disabled"]
+		except Exception as e:
+			return [False, "Lockdown failed to disable! ", str(e)]
+
 
 class message_new_text:
 	def __init__(self, message):
@@ -328,21 +395,30 @@ class message_new_chat_members:
 		self.getInfo()
 		# for each new member in the new_chat_members array
 		for member in self.new_chat_members:
-			if member['id'] != bot_id and member['is_bot'] == False:
-				# restrict new user's permissions to be restricted from everything permanently
-				newMemberRestrictions = json.dumps({
-					"can_send_messages": False, 
-					"can_send_media_messages": False, 
-					"can_send_polls": False, 
-					"can_send_other_messages": False, 
-					"can_add_web_page_previews": False, 
-					"can_change_info": False, 
-					"can_invite_users": False, 
-					"can_pin_messages": False
-					})
-				sendRequest(["restrictChatMember", "chat_id", self.chat_id, "user_id", member['id'], "permissions", newMemberRestrictions, "until_date", self.date])
-				# add user to newUser list
-				self.addToList(member)
+			# if group isn't in lockdown mode
+			if config.getCustomGroupConfig(self.chat['id'])['inLockdown'] == False:
+				if member['id'] != bot_id and member['is_bot'] == False:
+					# restrict new user's permissions to be restricted from everything permanently
+					newMemberRestrictions = json.dumps({
+						"can_send_messages": False, 
+						"can_send_media_messages": False, 
+						"can_send_polls": False, 
+						"can_send_other_messages": False, 
+						"can_add_web_page_previews": False, 
+						"can_change_info": False, 
+						"can_invite_users": False, 
+						"can_pin_messages": False
+						})
+					sendRequest(["restrictChatMember", "chat_id", self.chat_id, "user_id", member['id'], "permissions", newMemberRestrictions, "until_date", self.date])
+					# add user to newUser list
+					self.addToList(member)
+			# if group is in lockdown mode, auto-ban every new user join
+			else:
+				banRequest = sendRequest(["kickChatMember", "chat_id", self.chat['id'], "user_id", member['id']])
+				if banRequest[0] == False:
+					# if the ban failed, output request contents
+					print("timestamp:", int(time.time()), "Couldn't ban user_id", newUsers[key]['id'], ":", banRequest[2])
+
 
 	def getInfo(self):
 		# extract always included message data
@@ -478,7 +554,6 @@ class config:
 		self.configFilePath = configFilePath
 		self.configDefaultGroupData = None
 		self.configGroupsData = None
-
 		self.configData = None
 
 	def loadConfig(self):
@@ -874,10 +949,62 @@ if __name__ == '__main__':
 	# new user requirements are satisfied
 	newUsers = {}
 
-	botCommands = '[{"command":"setunvalttk", "description":"Set how many seconds user has to press button before being kicked"}, {"command":"setvalttk","description":"Set how many seconds user has to send something after being validated"}, {"command":"setrestricttime","description":"Set how many seconds a user is restricted for after being validated"}, {"command":"setdeletetime","description":"Set how many seconds until bot messages are automatically deleted (after task is done)"}, {"command":"setfrstmsgrtime","description":"Set how many seconds to monitor a new users messages for something prohibited after sending their 1st message"}]'
-	commandRequest = sendRequest(["setMyCommands", "commands", botCommands])
-	# make a list of just the command names
-	botCommandsList = [item.get('command') for item in json.loads(botCommands)]
+	botCommandsInfo = {
+		"enable":{
+			"name":"enable",
+			"description":"Enable the bot, respond to new events",
+			"paramType":"none"
+		},
+		"disable":{
+			"name":"disable",
+			"description":"Disable the bot, ignore new events",
+			"paramType":"none"
+		},
+		"setunvalttk":{
+			"name":"setunvalttk",
+			"description":"Set how many seconds user has to press button before being kicked",
+			"paramType":"posint"
+		},
+		"setvalttk":{
+			"name":"setvalttk",
+			"description":"Set how many seconds user has to send something after being validated",
+			"paramType":"posint"
+		},
+		"setrestricttime":{
+			"name":"setrestricttime",
+			"description":"Set how many seconds a user is restricted for after being validated",
+			"paramType":"posint"
+		},
+		"setdeletetime":{
+			"name":"setdeletetime",
+			"description":"Set how many seconds until bot messages are automatically deleted (after task is done)",
+			"paramType":"posint"
+		},
+		"setfrstmsgrtime":{
+			"name":"setfrstmsgrtime",
+			"description":"Set how many seconds to monitor a new users messages for something prohibited after sending their 1st message",
+			"paramType":"posint"
+		},
+		"lockdown":{
+			"name":"lockdown",
+			"description":"CAUTION: Will auto-ban every new user join until disabled",
+			"paramType":"none"
+		},
+		"disablelockdown":{
+			"name":"disablelockdown",
+			"description":"Disable lockdown mode",
+			"paramType":"none"
+		}
+	}
+
+	# turn botCommands into the type of list telegram requires for setMyCommands method
+	botCommandsAsList = list(botCommandsInfo.items())
+	botCommandsForTelegram = '['
+	botCommandsForTelegram = botCommandsForTelegram + '{"command":"' + botCommandsAsList[0][1]['name'] + '", "description":"' + botCommandsAsList[0][1]['description'] + '"}'
+	for command in botCommandsAsList:
+		botCommandsForTelegram = botCommandsForTelegram + ', {"command":"' + command[1]['name'] + '", "description":"' + command[1]['description'] + '"}'
+	botCommandsForTelegram = botCommandsForTelegram + ']'
+	commandRequest = sendRequest(["setMyCommands", "commands", botCommandsForTelegram])
 
 	# Chat IDs to work with. Don't want just anyone adding the bot and sucking up the host's resources!
 	whiteListRead = readIntFileToList(whiteListFile)
