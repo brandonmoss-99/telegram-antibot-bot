@@ -64,16 +64,30 @@ class messageHandler:
 	def handleMessage(self, message):
 		# if the chat the message was sent from is active, process message
 		if config.getCustomGroupConfig(message['message']['chat']['id'])['active']:
-			if 'new_chat_members' in message['message']:
+			if 'text' in message['message']:
+				newMessage = message_new_text(message['message'])
+			elif 'new_chat_members' in message['message']:
 				newMessage = message_new_chat_members(message['message'])
-			elif 'left_chat_member' in message['message']:
-				newMessage = message_new_left_members(message['message'])
 			elif 'forward_from' in message['message']:
 				newMessage = message_new_forwarded(message['message'])
-			elif 'text' in message['message']:
-				newMessage = message_new_text(message['message'])
+
+			elif 'photo' in message['message']:
+				newMessage = message_new_media(message['message'], 'photo')
+			elif 'video' in message['message']:
+				newMessage = message_new_media(message['message'], 'video')
+			elif 'video_note' in message['message']:
+				newMessage = message_new_media(message['message'], 'video_note')
+			elif 'audio' in message['message']:
+				newMessage = message_new_media(message['message'], 'audio')
+			elif 'document' in message['message']:
+				newMessage = message_new_media(message['message'], 'document')
+			elif 'sticker' in message['message']:
+				newMessage = message_new_media(message['message'], 'sticker')
+
 			elif ('contact' in message['message']) or ('location' in message['message']):
 				newMessage = message_new_locationOrContact(message['message'])
+			elif 'left_chat_member' in message['message']:
+				newMessage = message_new_left_members(message['message'])
 		# still allow commands to be processed, even when inactive in chat
 		if 'entities' in message['message']:
 			for entity in message['message']['entities']:
@@ -376,6 +390,28 @@ class message_new_forwarded:
 		self.date = self.message['date']
 		self.chat = self.message['chat']
 		self.isfrom = self.message['from'] # optional, but only as not sent when msg sent to channel
+
+
+class message_new_media:
+	def __init__(self, message, msgtype):
+		self.message = message
+		self.msgtype = msgtype
+		self.getInfo()
+
+		# if the user who sent the message is still in newUsers dictionary
+		if self.isfrom['id'] + self.chat['id'] in newUsers:
+			if ((newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None) or 
+				(self.msgtype in config.getCustomGroupConfig(self.chat['id'])['toMonitorAfterFirstSend']['types'] and int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= config.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards'])):
+					# add message to newUsers list of messages
+					newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
+					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
+
+
+	def getInfo(self):
+		self.message_id = self.message['message_id']
+		self.date = self.message['date']
+		self.chat = self.message['chat']
+		self.isfrom = self.message['from']
 
 
 class message_new_locationOrContact:
@@ -1058,7 +1094,6 @@ if __name__ == '__main__':
 
 	# loop, run until program is quit
 	while True:
-		print(config.getCustomGroupConfig(0)['toMonitorAfterFirstSend']['types'])
 		# fetch all the new messages from Telegram servers
 		if messageFetcher.fetchMessages() == True:
 			# for each message in the list of new messages
