@@ -66,6 +66,8 @@ class messageHandler:
 		if config.getCustomGroupConfig(message['message']['chat']['id'])['active']:
 			if 'new_chat_members' in message['message']:
 				newMessage = message_new_chat_members(message['message'])
+			elif 'left_chat_member' in message['message']:
+				newMessage = message_new_left_members(message['message'])
 			elif 'forward_from' in message['message']:
 				newMessage = message_new_forwarded(message['message'])
 			elif 'text' in message['message']:
@@ -299,7 +301,7 @@ class commandHandler:
 				enableCommand = self.enable(None, self.groupConfig)
 				# if bot was successfully re-enabled, enter lockdown
 				if enableCommand[0] == True:
-					return [True, "\U0001F6A8 !!! LOCKDOWN ENABLED !!! \U0001F6A8 %0A%0ABot was automatically re-enabled! %0A%0AAll new users will be insta-banned until disabled!"]
+					return [True, "\U0001F6A8 !!! LOCKDOWN ENABLED !!! \U0001F6A8 %0A%0ABot was automatically re-enabled to respond! %0A%0AAll new users will be insta-banned until disabled!"]
 				else:
 					return [False, "Lockdown failed! Couldn't automatically re-enable the bot! ", str(e)]
 			else:
@@ -417,7 +419,10 @@ class message_new_chat_members:
 				banRequest = sendRequest(["kickChatMember", "chat_id", self.chat['id'], "user_id", member['id']])
 				if banRequest[0] == False:
 					# if the ban failed, output request contents
-					print("timestamp:", int(time.time()), "Couldn't ban user_id", newUsers[key]['id'], ":", banRequest[2])
+					print("timestamp:", int(time.time()), "Couldn't ban user_id", member['id'], ":", banRequest[2])
+				deleteRequest = sendRequest(["deleteMessage", "chat_id", self.chat['id'], "message_id", self.message_id])
+				if deleteRequest[0] == False:
+					print("timestamp:", int(time.time()), "Couldn't delete message", self.message_id, "from chat", self.chat['id'],":", banRequest[2])
 
 
 	def getInfo(self):
@@ -488,6 +493,26 @@ class message_new_chat_members:
 			# to modify/delete later on
 			#newUsers[member['id'] + self.chat['id']]['welcomeMsgid'] = json.loads(welcome[2])['result']['message_id']
 			newUsers[member['id'] + self.chat['id']]['welcomeMsgid'].append(json.loads(welcome[2])['result']['message_id'])
+
+
+class message_new_left_members:
+	def __init__(self, message):
+		self.message = message
+		self.getInfo()
+		# if lockdown is enabled, try deleting the
+		# left message to keep the chat clean
+		if config.getCustomGroupConfig(self.chat['id'])['inLockdown'] == True:
+			deleteRequest = sendRequest(["deleteMessage", "chat_id", self.chat['id'], "message_id", self.message_id])
+			if deleteRequest[0] == False:
+				print("timestamp:", int(time.time()), "Couldn't delete message", self.message_id, "from chat", self.chat['id'],":", banRequest[2])
+
+
+
+	def getInfo(self):
+		# extract always included message data
+		self.message_id = self.message['message_id']
+		self.date = self.message['date']
+		self.chat = self.message['chat']
 
 
 class callback_queryHandler:
