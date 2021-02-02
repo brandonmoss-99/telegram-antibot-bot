@@ -24,7 +24,6 @@ class messageFetcher:
 		updatesToFetch = '["message", "callback_query"]'
 		updateRequest = sendRequest(["getUpdates", "offset", msgOffset, "timeout", self.pollTimeout, "allowed_updates", updatesToFetch])
 		if updateRequest[0] == True:
-			#print(updateRequest[2])
 			self.messagesParsed = json.loads(updateRequest[2])
 			return True
 		else:
@@ -644,7 +643,7 @@ class config:
 
 
 def handleWrongChat():
-	print("timestamp:", int(time.time()), "New msg from a non-whitelisted group, ID: ", msg['message']['chat']['id'])
+	print("timestamp:", int(time.time()), "New msg from a non-whitelisted", msg['message']['chat']['type'], "ID: ", msg['message']['chat']['id'])
 	sendRequest(["sendMessage", "chat_id", msg['message']['chat']['id'], "text", "Hi there%21%0A%0AI appreciate the add to your group, however right now I only work on specific groups%21"])
 	sendRequest(["leaveChat", "chat_id", msg['message']['chat']['id']])
 
@@ -1055,7 +1054,7 @@ if __name__ == '__main__':
 				# get the message
 				msg = messageFetcher.getMessage(i)
 				# check the message type and hand message off to handler
-				if 'message' in msg:
+				if 'message' in msg and msg['message']['chat']['type'] in ['group', 'supergroup']:
 					# if we're using a whitelist to restrict chats we deal with
 					if usingWhitelistRestrictions == True:
 						# if a message comes from a whitelisted chat, deal with it, otherwise
