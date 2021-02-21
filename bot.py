@@ -484,7 +484,7 @@ class message_new_chat_members:
 			welcomeMsg = "Hiya, @" + newUsers[member['id'] + self.chat['id']]['username'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
 			welcome = sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "entities", "[{'type':'mention', 'offset':6, 'length':" + str(len(member['username'])) + "}]" ,"reply_markup", verifyPrompt])
 		else:
-			welcomeMsg = "Hiya, " + newUsers[member['id'] + self.chat['id']]['first_name'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
+			welcomeMsg = "Hiya, " + newUsers[member['id'] + self.chat['id']]['firstName'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
 			# send welcomeverify prompt to user
 			welcome = sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "reply_markup", verifyPrompt])
 		if welcome[0] == True:
@@ -498,6 +498,15 @@ class message_new_left_members:
 	def __init__(self, message):
 		self.message = message
 		self.getInfo()
+
+		# if new user is in newUsers, delete all messages sent by bot (to clean up)
+		if self.message['user']['id'] + self.chat['id'] in newUsers:
+			# delete welcome messages. Don't delete join message, want to see in past when a genuine user joins the chat
+			for msg in range(len(newUsers[self.message['user']['id'] + self.chat['id']]['welcomeMsgid'])):
+				deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[self.message['user']['id'] + self.chat['id']]['chatId'], "message_id", newUsers[self.message['user']['id'] + self.chat['id']]['welcomeMsgid'][msg-1]])
+				if deleteRequest[0] == False:
+					print("timestamp:", int(time.time()), "Failed to delete message", newUsers[self.message['user']['id'] + self.chat['id']]['welcomeMsgid'], ":", deleteRequest[2])
+
 		# if lockdown is enabled, try deleting the
 		# left message to keep the chat clean
 		if config.getCustomGroupConfig(self.chat['id'])['inLockdown'] == True:
@@ -553,7 +562,7 @@ class message_new_callback_query:
 					validatedMessage = "Yay, @" + newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
 					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage, "entities", "[{'type':'mention', 'offset':5, 'length':" + str(len(newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'])) + "}]"])
 				else:
-					validatedMessage = "Yay, " + self.query_from['first_name'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
+					validatedMessage = "Yay, " + self.query_from['firstName'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
 					newTextMessageRequest = sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage])
 
 				if newTextMessageRequest[0] == True:
