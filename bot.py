@@ -499,14 +499,6 @@ class message_new_left_members:
 		self.message = message
 		self.getInfo()
 
-		# if new user is in newUsers, delete all messages sent by bot (to clean up)
-		if self.message['user']['id'] + self.chat['id'] in newUsers:
-			# delete welcome messages. Don't delete join message, want to see in past when a genuine user joins the chat
-			for msg in range(len(newUsers[self.message['user']['id'] + self.chat['id']]['welcomeMsgid'])):
-				deleteRequest = sendRequest(["deleteMessage", "chat_id", newUsers[self.message['user']['id'] + self.chat['id']]['chatId'], "message_id", newUsers[self.message['user']['id'] + self.chat['id']]['welcomeMsgid'][msg-1]])
-				if deleteRequest[0] == False:
-					print("timestamp:", int(time.time()), "Failed to delete message", newUsers[self.message['user']['id'] + self.chat['id']]['welcomeMsgid'], ":", deleteRequest[2])
-
 		# if lockdown is enabled, try deleting the
 		# left message to keep the chat clean
 		if config.getCustomGroupConfig(self.chat['id'])['inLockdown'] == True:
