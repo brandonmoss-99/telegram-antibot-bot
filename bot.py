@@ -88,36 +88,36 @@ class message_new_botCommand:
 	def __init__(self, message):
 		self.message = message
 		self.getInfo()
-		# get up-to-date list of admins. The command should only be processed if
-		# the person who sent the command is an admin of the chat it was sent from
-		getAdminsResponse = sendRequest(["getChatAdministrators", "chat_id", self.chat['id']])
-		# only process commands if a list of admins could be fetched
-		# don't want just anyone running the commands
-		if getAdminsResponse[0] == True:
-			# make list of admin IDs from results
-			chatAdminIDs = [user['user']['id'] for user in json.loads(getAdminsResponse[2])['result']]
-			# if the bot command was sent from a group admin
-			if self.isfrom['id'] in chatAdminIDs:
-				# check if the command and parameters are valid
-				commandStringValid = self.checkBotCommandStringValid()
-				commandParamValid = self.checkBotCommandParamValid()
-				# if the command and parameters are valid, 
-				# make new commandHandler and run the command with the parameter
-				# and reply
-				if commandStringValid and commandParamValid:
-					groupConfig = self.getChatInfo()
-					commandHandle = commandHandler()
-					commandResponse = commandHandle.runCommandGroupData(self.commandParsed, self.botCommandParam, groupConfig)
-					#commandResponse = commandHandle.runCommand(self.commandParsed, self.botCommandParam)
-					self.reply(commandResponse)
-				elif commandStringValid and not commandParamValid:
-					self.reply([False, "Failed, something is wrong with the value after your command", "Command parameter was invalid"])
+
+		# parse the command and check if it's valid to the list of commands
+		commandStringValid = self.checkBotCommandStringValid()
+		if commandStringValid:
+			# get up-to-date list of admins. The command should only be processed if
+			# the person who sent the command is an admin of the chat it was sent from
+			getAdminsResponse = sendRequest(["getChatAdministrators", "chat_id", self.chat['id']])
+			# only process commands if a list of admins could be fetched
+			# don't want just anyone running the commands
+			if getAdminsResponse[0] == True:
+				# make list of admin IDs from results
+				chatAdminIDs = [user['user']['id'] for user in json.loads(getAdminsResponse[2])['result']]
+				# if the bot command was sent from a group admin
+				if self.isfrom['id'] in chatAdminIDs:
+					# check if the command parameters are valid
+					commandParamValid = self.checkBotCommandParamValid()
+					# if the command parameters are valid, 
+					# make new commandHandler and run the command with the parameter
+					# and reply
+					if commandParamValid:
+						groupConfig = self.getChatInfo()
+						commandHandle = commandHandler()
+						commandResponse = commandHandle.runCommandGroupData(self.commandParsed, self.botCommandParam, groupConfig)
+						self.reply(commandResponse)
+					else:
+						self.reply([False, "Failed, something is wrong with the value after your command", "Command parameter was invalid"])
 				else:
-					self.reply([False, "Failed, something is wrong with your command and/or value after it", "Command was invalid"])
+					self.reply([False, "You don't have permission to run this command!", "Unauthorised user tried running command"])
 			else:
-				self.reply([False, "You don't have permission to run this command!", "Unauthorised user tried running command"])
-		else:
-			self.reply([False, "Failed, couldn't acquire the list of admins. For safety, commands can't run until a list of admins can be established!", "Failed to get admin list for chat"])
+				self.reply([False, "Failed, couldn't acquire the list of admins. For safety, commands can't run until a list of admins can be established!", "Failed to get admin list for chat"])
 
 	def getInfo(self):
 		self.message_id = self.message['message_id']
