@@ -23,4 +23,4 @@ class tMsgSender:
 			else:
 				return [False, request.status_code, request.content]
 		except Exception as e:
-			return [False, 0, "Error whilst making the request:", requestString, "\nError:",str(e)]
+			return [False, 0, "Error whilst making the request:" + requestString + "\nError:" + str(e)]

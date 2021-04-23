@@ -4,6 +4,7 @@ from tMsgSender import tMsgSender
 from tMsgFetcher import tMsgFetcher
 from uData import uData
 from configHandler import configHandler
+from tMsgHandler import tMsgHandler
 
 def getHelp():
 	print("\nList of options:\n\n" +
@@ -243,34 +244,6 @@ class commandHandler:
 			return [False, "Lockdown failed to disable! ", str(e)]
 
 
-class message_new_text:
-	def __init__(self, message):
-		self.message = message
-		self.getInfo()
-		# if the message sent is from a new user in the newUsers dictionary,
-		# set their hasSentGoodMessage property to True, to mark them to be
-		# deleted from the dictionary
-		if self.isfrom['id'] + self.chat['id'] in newUsers:
-			# add message to newUsers list of messages
-			newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
-			# if user has sent an entity in their 1st text message, delete their message and mark for kicking
-			if ('entities' in self.message) and (self.message['entities'][0]['type'] in configHandler.getCustomGroupConfig(self.chat['id'])['bannedEntities']):
-				newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
-			else:
-				newUsers[self.isfrom['id'] + self.chat['id']]['hasSentGoodMessage'] = True
-				# if the user hasn't already sent a message, set their first message time to current unix time
-				if newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None:
-					newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] = int(time.time())
-
-	def getInfo(self):
-		# extract always included message data
-		self.message_id = self.message['message_id']
-		self.date = self.message['date']
-		self.chat = self.message['chat']
-		# include optional message data
-		self.isfrom = self.message['from']
-
-
 class message_new_forwarded:
 	def __init__(self, message):
 		self.message = message
@@ -418,25 +391,6 @@ class message_new_chat_members:
 			# to modify/delete later on
 			#newUsers[member['id'] + self.chat['id']]['welcomeMsgid'] = json.loads(welcome[2])['result']['message_id']
 			newUsers[member['id'] + self.chat['id']]['welcomeMsgid'].append(json.loads(welcome[2])['result']['message_id'])
-
-
-class message_new_left_members:
-	def __init__(self, message):
-		self.message = message
-		self.getInfo()
-
-		# if lockdown is enabled, try deleting the
-		# left message to keep the chat clean
-		if configHandler.getCustomGroupConfig(self.chat['id'])['inLockdown'] == True:
-			deleteRequest = tMsgSender.sendRequest(["deleteMessage", "chat_id", self.chat['id'], "message_id", self.message_id])
-			if deleteRequest[0] == False:
-				print("timestamp:", int(time.time()), "Couldn't delete message", self.message_id, "from chat", self.chat['id'],":", banRequest[2])
-
-	def getInfo(self):
-		# extract always included message data
-		self.message_id = self.message['message_id']
-		self.date = self.message['date']
-		self.chat = self.message['chat']
 
 
 class callback_queryHandler:
@@ -793,8 +747,8 @@ if __name__ == '__main__':
 	tMsgFetcher = tMsgFetcher(token, pollTimeout)
 	uData = uData()
 	configHandler = configHandler('../config.txt')
+	tMsgHandler = tMsgHandler(token, configHandler, uData, tMsgSender)
 
-	messageHandler = messageHandler(token)
 	callback_queryHandler = callback_queryHandler(token)
 
 	# load configurations
@@ -899,13 +853,13 @@ if __name__ == '__main__':
 						# if a message comes from a whitelisted chat, deal with it, otherwise
 						# send a message and remove the bot from the chat the message came from
 						if msg['message']['chat']['id'] in whitelistedChatIDs:
-							messageHandler.handleMessage(msg)
+							tMsgHandler.handleMessage(msg)
 						else:
 							handleWrongChat()
 					# if we're not using a whitelist to restrict chats, 
 					# handle message without checking chat origin
 					else:
-						messageHandler.handleMessage(msg)
+						tMsgHandler.handleMessage(msg)
 
 				# callback query is from tapping a button sent with message
 				elif 'callback_query' in msg:

@@ -28,6 +28,21 @@ class uData:
 		"""
 		return self.newUsers[key]
 
+	def userExists(self, key):
+		"""
+		Check if key exists in newUsers dictionary, and return True/False
+		"""
+		return True if key in self.newUsers else False
+
+	def getData(self, key, value):
+		return self.newUsers[key][value]
+
+	def appendData(self, key, value, data):
+		self.newUsers[key][value].append(data)
+
+	def setData(self, key, value, data):
+		self.newUsers[key][value] = data
+
 
 	def addnewUser(self, key, data):
 		self.newUsers[key] = data
