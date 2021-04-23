@@ -3,6 +3,7 @@ from urllib import parse
 from tMsgSender import tMsgSender
 from tMsgFetcher import tMsgFetcher
 from uData import uData
+from configHandler import configHandler
 
 def getHelp():
 	print("\nList of options:\n\n" +
@@ -110,7 +111,7 @@ class message_new_botCommand:
 			return True
 
 	def getChatInfo(self):
-		groupConfig = config.getCustomGroupConfig(self.chat['id'])
+		groupConfig = configHandler.getCustomGroupConfig(self.chat['id'])
 
 		# make newConfig a deep copy of the dictionary
 		# passed in, so if the group passed in is the 
@@ -156,10 +157,8 @@ class commandHandler:
 	# set unvalidatedTimeToKick
 	def setunvalttk(self, param, groupConfig):
 		try:
-			#print("old config: ", config.configGroupsData)
 			self.groupConfig['unValidatedTimeToKick'] = self.param
-			config.setCustomGroupConfig(self.groupConfig)
-			#print("\n\nnew config: ", config.configGroupsData)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully set unvalidated time to kick to " + str(param) + " seconds"]
 		except Exception as e:
 			return [False, "Failed to set unvalidated time to kick to " + str(param) + " seconds", str(e)]
@@ -168,7 +167,7 @@ class commandHandler:
 	def setvalttk(self, param, groupConfig):
 		try:
 			self.groupConfig['validatedTimeToKick'] = self.param
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully set validated time to kick to " + str(param) + " seconds"]
 		except Exception as e:
 			return [False, "Failed to set validated time to kick to " + str(param) + " seconds", str(e)]
@@ -177,7 +176,7 @@ class commandHandler:
 	def setrestricttime(self, param, groupConfig):
 		try:
 			self.groupConfig['timeToRestrict'] = self.param
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully set button tap restriction time to " + str(param) + " seconds"]
 		except Exception as e:
 			return [False, "Failed to set button tap restriction time to " + str(param) + " seconds", str(e)]
@@ -186,7 +185,7 @@ class commandHandler:
 	def setdeletetime(self, param, groupConfig):
 		try:
 			self.groupConfig['timeToDelete'] = self.param
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully set time to delete my messages to " + str(param) + " seconds"]
 		except Exception as e:
 			return [False, "Failed to set time to delete my messages to " + str(param) + " seconds", str(e)]
@@ -195,7 +194,7 @@ class commandHandler:
 	def setfrstmsgrtime(self, param, groupConfig):
 		try:
 			self.groupConfig['timeToRestrictForwards'] = self.param
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds"]
 		except Exception as e:
 			return [False, "Failed to set time to monitor new user's messages for anything prohibited after their first message to " + str(param) + " seconds", str(e)]
@@ -203,7 +202,7 @@ class commandHandler:
 	def disable(self, param, groupConfig):
 		try:
 			self.groupConfig['active'] = False
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully disabled the bot from responding to new events"]
 		except Exception as e:
 			return [False, "Failed to disable the bot from responding to new events ", str(e)]
@@ -211,7 +210,7 @@ class commandHandler:
 	def enable(self, param, groupConfig):
 		try:
 			self.groupConfig['active'] = True
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Successfully enabled the bot to respond to new events"]
 		except Exception as e:
 			return [False, "Failed to enable the bot to respond to new events ", str(e)]
@@ -220,7 +219,7 @@ class commandHandler:
 	def lockdown(self, param, groupConfig):
 		try:
 			self.groupConfig['inLockdown'] = True
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			# if the bot is not responding to new events when a lockdown
 			# command is sent, re-enable the bot to respond
 			if self.groupConfig['active'] == False:
@@ -238,7 +237,7 @@ class commandHandler:
 	def disablelockdown(self, param, groupConfig):
 		try:
 			self.groupConfig['inLockdown'] = False
-			config.setCustomGroupConfig(self.groupConfig)
+			configHandler.setCustomGroupConfig(self.groupConfig)
 			return [True, "Lockdown successfully disabled"]
 		except Exception as e:
 			return [False, "Lockdown failed to disable! ", str(e)]
@@ -255,7 +254,7 @@ class message_new_text:
 			# add message to newUsers list of messages
 			newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
 			# if user has sent an entity in their 1st text message, delete their message and mark for kicking
-			if ('entities' in self.message) and (self.message['entities'][0]['type'] in config.getCustomGroupConfig(self.chat['id'])['bannedEntities']):
+			if ('entities' in self.message) and (self.message['entities'][0]['type'] in configHandler.getCustomGroupConfig(self.chat['id'])['bannedEntities']):
 				newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
 			else:
 				newUsers[self.isfrom['id'] + self.chat['id']]['hasSentGoodMessage'] = True
@@ -282,7 +281,7 @@ class message_new_forwarded:
 		# x mins ago, delete their message and mark for kicking
 		if self.isfrom['id'] + self.chat['id'] in newUsers:
 			if ((newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None) or 
-				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= config.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards'])):
+				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= configHandler.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards'])):
 					# add message to newUsers list of messages
 					newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
 					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
@@ -304,8 +303,8 @@ class message_new_locationOrContact:
 		# x mins ago, delete their message and mark for kicking
 		if self.isfrom['id'] + self.chat['id'] in newUsers:
 			if ((newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] == None) or 
-				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= config.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards']) or
-				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSetTextRestrictions'] <= config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick'])):
+				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSentFirstMessage'] <= configHandler.getCustomGroupConfig(self.chat['id'])['timeToRestrictForwards']) or
+				(int(time.time()) - newUsers[self.isfrom['id'] + self.chat['id']]['timeSetTextRestrictions'] <= configHandler.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick'])):
 					# add message to newUsers list of messages
 					newUsers[self.isfrom['id'] + self.chat['id']]['sentMessages'].append(self.message_id)
 					newUsers[self.isfrom['id'] + self.chat['id']]['hasSentBadMessage'] = True
@@ -324,7 +323,7 @@ class message_new_chat_members:
 		# for each new member in the new_chat_members array
 		for member in self.new_chat_members:
 			# if group isn't in lockdown mode
-			if config.getCustomGroupConfig(self.chat['id'])['inLockdown'] == False:
+			if configHandler.getCustomGroupConfig(self.chat['id'])['inLockdown'] == False:
 				if member['id'] != bot_id and member['is_bot'] == False:
 					# restrict new user's permissions to be restricted from everything permanently
 					newMemberRestrictions = json.dumps({
@@ -408,10 +407,10 @@ class message_new_chat_members:
 			"inline_keyboard":[[{"text": "I'm not a robot!", "callback_data": str(member['id'])+str(self.chat['id'])+"Success"}]]})
 		# create welcome text part of prompt
 		if newUsers[member['id'] + self.chat['id']]['username'] != None:
-			welcomeMsg = "Hiya, @" + newUsers[member['id'] + self.chat['id']]['username'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
+			welcomeMsg = "Hiya, @" + newUsers[member['id'] + self.chat['id']]['username'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(configHandler.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(configHandler.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(configHandler.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
 			welcome = tMsgSender.sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "entities", "[{'type':'mention', 'offset':6, 'length':" + str(len(member['username'])) + "}]" ,"reply_markup", verifyPrompt])
 		else:
-			welcomeMsg = "Hiya, " + newUsers[member['id'] + self.chat['id']]['firstName'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(config.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(config.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
+			welcomeMsg = "Hiya, " + newUsers[member['id'] + self.chat['id']]['firstName'] + "%0A%0ATo proceed, please tap the %27I%27m not a robot%21%27 button, within the next%20" + str(int(configHandler.getCustomGroupConfig(self.chat['id'])['unValidatedTimeToKick']/60)) + "%20minutes!%0A%0AOnce done, you%27ll have around%20" + str(configHandler.getCustomGroupConfig(self.chat['id'])['timeToRestrict']) + "%20seconds of full restrictions, then%20" + str(int(configHandler.getCustomGroupConfig(self.chat['id'])['validatedTimeToKick']/60)) + "%20minutes to send a message%20%3A%29"
 			# send welcomeverify prompt to user
 			welcome = tMsgSender.sendRequest(["sendMessage", "chat_id", self.chat_id, "text", welcomeMsg, "reply_markup", verifyPrompt])
 		if welcome[0] == True:
@@ -428,7 +427,7 @@ class message_new_left_members:
 
 		# if lockdown is enabled, try deleting the
 		# left message to keep the chat clean
-		if config.getCustomGroupConfig(self.chat['id'])['inLockdown'] == True:
+		if configHandler.getCustomGroupConfig(self.chat['id'])['inLockdown'] == True:
 			deleteRequest = tMsgSender.sendRequest(["deleteMessage", "chat_id", self.chat['id'], "message_id", self.message_id])
 			if deleteRequest[0] == False:
 				print("timestamp:", int(time.time()), "Couldn't delete message", self.message_id, "from chat", self.chat['id'],":", banRequest[2])
@@ -478,10 +477,10 @@ class message_new_callback_query:
 				# send new message. If that succeeds, add it to current messages 
 				# shown in chat, then try and delete the last message sent
 				if newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'] != None:
-					validatedMessage = "Yay, @" + newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
+					validatedMessage = "Yay, @" + newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(configHandler.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
 					newTextMessageRequest = tMsgSender.sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage, "entities", "[{'type':'mention', 'offset':5, 'length':" + str(len(newUsers[self.query_from['id'] + self.query_message['chat']['id']]['username'])) + "}]"])
 				else:
-					validatedMessage = "Yay, " + self.query_from['firstName'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(config.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
+					validatedMessage = "Yay, " + self.query_from['firstName'] + "%20 has passed validation%21%0A%0ATo ensure you aren%27t just a clever bot that can press buttons, you%27ll be restricted for around another%20" + str(configHandler.getCustomGroupConfig(self.query_message['chat']['id'])['timeToRestrict']) + "%20seconds!"
 					newTextMessageRequest = tMsgSender.sendRequest(["sendMessage", "chat_id", self.query_message['chat']['id'], "text", validatedMessage])
 
 				if newTextMessageRequest[0] == True:
@@ -499,77 +498,6 @@ class message_new_callback_query:
 			tMsgSender.sendRequest(["answerCallbackQuery", "callback_query_id", str(self.query_id) + 'answerFail'])
 
 
-class config:
-	def __init__(self, configFilePath):
-		self.configFilePath = configFilePath
-		self.configDefaultGroupData = None
-		self.configGroupsData = None
-		self.configData = None
-
-	def loadConfig(self):
-		with open(self.configFilePath, 'r') as configFile:
-			try:
-				self.configData = json.load(configFile)
-				return [True, "Config loaded successfully"]
-			except Exception as e:
-				return [False, "Error parsing the config file: " + str(e)]
-
-	def loadBotConfig(self):
-		varsToLoad = ["msgOffset", "pollTimeout", "whiteListFile"]
-		if 'config' in self.configData:
-			try:
-				for var in varsToLoad:
-					globals()[var] = self.configData['config']['bot'][var]
-				return [True, "Bot config loaded successfully"]
-			except Exception as e:
-				return [False, "Error loading bot variables from config file: " + str(e)]
-		else:
-			return [False, "Error, config section doesn't exist in the file!"]
-
-	def loadDefaultGroupConfig(self):
-		if 'config' in self.configData and 'groups' in self.configData['config']:
-			try:
-				self.configDefaultGroupData = self.configData['config']['groups']['default']
-				return [True, "Default group config loaded successfully"]
-			except Exception as e:
-				return [False, "Error loading default group config from file: " + str(e)]
-		else:
-			return [False, "Error, config/group/default section doesn't exist in the file!"]
-
-	def loadGroupConfigs(self):
-		if 'config' in self.configData and 'groups' in self.configData['config']:
-			try:
-				self.configGroupsData = self.configData['config']['groups']['custom']
-				return [True, "Default group config loaded successfully"]
-			except Exception as e:
-				return [False, "Error loading custom group configs from file: " + str(e)]
-		else:
-			return [False, "Error, config/group/custom section doesn't exist in the file!"]
-
-	def getCustomGroupConfig(self, groupId):
-		# if the groupId requested exists in config data
-		# return that group data, otherwise return the
-		# default group config data
-		if str(groupId) in self.configGroupsData:
-			return self.configGroupsData[str(groupId)]
-		else:
-			return self.configDefaultGroupData
-
-	def setCustomGroupConfig(self, groupConfigToChange):
-		# if the group to change config already exists,
-		# replace it with new groupConfig
-		#if groupConfigToChange['id'] in self.configGroupsData:
-		self.configGroupsData[groupConfigToChange['id']] = groupConfigToChange
-		self.writeConfig()
-
-	def writeConfig(self):
-		with open('config.txt', 'w') as configFile:
-			try:
-				json.dump(self.configData, configFile, indent=4)
-			except Exception as e:
-				print("Failed to write file!")
-
-
 def handleWrongChat():
 	print("timestamp:", int(time.time()), "New msg from a non-whitelisted", msg['message']['chat']['type'], "ID: ", msg['message']['chat']['id'])
 	tMsgSender.sendRequest(["sendMessage", "chat_id", msg['message']['chat']['id'], "text", "Hi there%21%0A%0AI appreciate the add to your group, however right now I only work on specific groups%21"])
@@ -582,7 +510,7 @@ def processNewUserList():
 	toDelete = []
 	for key in newUsers:
 		# get group info for the user, saves making lots of getConfig requests
-		groupInfo = config.getCustomGroupConfig(newUsers[key]['chatId'])
+		groupInfo = configHandler.getCustomGroupConfig(newUsers[key]['chatId'])
 
 		# if the user hasn't passed validation, and
 		# has been in chat longer than the kick duration, 
@@ -861,12 +789,19 @@ if __name__ == '__main__':
 			getHelp()
 	print("--------------------------------------\nProgram started at UNIX time:", int(time.time()), "\n")
 
+	tMsgSender = tMsgSender(token)
+	tMsgFetcher = tMsgFetcher(token, pollTimeout)
+	uData = uData()
+	configHandler = configHandler('../config.txt')
+
+	messageHandler = messageHandler(token)
+	callback_queryHandler = callback_queryHandler(token)
+
 	# load configurations
-	config = config('config.txt')
-	print(config.loadConfig()[1])
-	botConfLoad = config.loadBotConfig()
-	defaultConfLoad = config.loadDefaultGroupConfig()
-	customConfLoad = config.loadGroupConfigs()
+	print(configHandler.loadConfig()[1])
+	botConfLoad = configHandler.loadBotConfig()
+	defaultConfLoad = configHandler.loadDefaultGroupConfig()
+	customConfLoad = configHandler.loadGroupConfigs()
 	# if the bot, default group or custom group configs can't be found
 	# stop program, needs to be fixed
 	if not botConfLoad[0] or not defaultConfLoad[0] or not customConfLoad[0]:
@@ -925,13 +860,6 @@ if __name__ == '__main__':
 			"paramType":"none"
 		}
 	}
-
-	tMsgSender = tMsgSender(token)
-	tMsgFetcher = tMsgFetcher(token, pollTimeout)
-	uData = uData()
-	
-	messageHandler = messageHandler(token)
-	callback_queryHandler = callback_queryHandler(token)
 
 	# turn botCommands into the type of list telegram requires for setMyCommands method
 	botCommandsAsList = list(botCommandsInfo.items())
