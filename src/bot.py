@@ -68,22 +68,14 @@ if __name__ == '__main__':
 			getHelp()
 	print("--------------------------------------\nProgram started at UNIX time:", int(time.time()), "\n")
 
-	# create tMsgSender first, needed for other actions
+	# create tMsgSender and configHandler first, needed for other actions
 	tMsgSender = tMsgSender(token)
+	configHandler = configHandler('config.txt')
 
 	# get info about bot from Telegram
 	botInfo = json.loads(tMsgSender.sendRequest(["getMe"])[2])['result']
 	bot_id = botInfo['id']
 	bot_username = botInfo['username']
-
-	# create other needed objects
-	tMsgFetcher = tMsgFetcher(token, pollTimeout)
-	uData = uData()
-	configHandler = configHandler('../config.txt')
-	tBotCommandInfo = tBotCommandInfo()
-	tMsgHandler = tMsgHandler(token, bot_id, bot_username, configHandler, uData, tMsgSender, tBotCommandInfo)
-	tCallbackQueryHandler = tCallbackQueryHandler(token)
-	newUserProcessor = newUserProcessor(configHandler, uData, tMsgSender)
 
 	# load configurations
 	print(configHandler.loadConfig()[1])
@@ -96,6 +88,14 @@ if __name__ == '__main__':
 		print("Bot config: ", botConfLoad[1], "Default config: ", defaultConfLoad[1], "Custom group config: ", customConfLoad[1])
 		sys.exit(0)
 
+	# create other needed objects
+	tMsgFetcher = tMsgFetcher(token, tMsgSender, configHandler, configHandler.configBotData['pollTimeout'])
+	uData = uData()
+	tBotCommandInfo = tBotCommandInfo()
+	tMsgHandler = tMsgHandler(token, bot_id, bot_username, configHandler, uData, tMsgSender, tBotCommandInfo)
+	tCallbackQueryHandler = tCallbackQueryHandler(token, configHandler, uData, tMsgSender)
+	newUserProcessor = newUserProcessor(configHandler, uData, tMsgSender)
+
 
 	# turn botCommands into the type of list telegram requires for setMyCommands method
 	botCommandsAsList = tBotCommandInfo.getCommandItemsAsList()
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 	commandRequest = tMsgSender.sendRequest(["setMyCommands", "commands", botCommandsForTelegram])
 
 	# Chat IDs to work with. Don't want just anyone adding the bot and sucking up the host's resources!
-	whiteListRead = readIntFileToList(whiteListFile)
+	whiteListRead = readIntFileToList(configHandler.configBotData['whiteListFile'])
 	if whiteListRead[0] == True:
 		usingWhitelistRestrictions = True
 		whitelistedChatIDs = whiteListRead[1]
@@ -145,7 +145,7 @@ if __name__ == '__main__':
 				# update the message offset, so it is 'forgotten' by telegram servers
 				# and not returned again on next fetch for new messages, as we've
 				# (hopefully) dealt with the message now
-				msgOffset = msg['update_id'] + 1
+				tMsgFetcher.updateMsgOffset(msg['update_id'] + 1)
 
 			newUserProcessor.processNewUserList()
 		else:

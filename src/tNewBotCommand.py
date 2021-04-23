@@ -13,6 +13,7 @@ class tNewBotCommand:
 		self.tMsgSender = tMsgSender
 		self.tBotCommandInfo = tBotCommandInfo
 		self.tCommandHandler = tCommandHandler
+		self.bot_username = bot_username
 		self.getInfo()
 
 		# parse the command and check if it's valid to the list of commands

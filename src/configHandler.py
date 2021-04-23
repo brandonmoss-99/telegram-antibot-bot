@@ -6,6 +6,7 @@ class configHandler:
 		self.configDefaultGroupData = None
 		self.configGroupsData = None
 		self.configData = None
+		self.configBotData = {}
 
 	def loadConfig(self):
 		with open(self.configFilePath, 'r') as configFile:
@@ -20,7 +21,7 @@ class configHandler:
 		if 'config' in self.configData:
 			try:
 				for var in varsToLoad:
-					globals()[var] = self.configData['config']['bot'][var]
+					self.configBotData[var] = self.configData['config']['bot'][var]
 				return [True, "Bot config loaded successfully"]
 			except Exception as e:
 				return [False, "Error loading bot variables from config file: " + str(e)]

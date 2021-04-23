@@ -3,7 +3,7 @@ from configHandler import configHandler
 from tMsgSender import tMsgSender
 from uData import uData
 
-class callback_queryHandler:
+class tCallbackQueryHandler:
 	def __init__(self, token, configHandler, uData, tMsgSender):
 		self.token = token
 		self.configHandler = configHandler
@@ -11,4 +11,4 @@ class callback_queryHandler:
 		self.tMsgSender = tMsgSender
 
 	def handleCallbackQuery(self, message):
-		tNewCallbackQuery = tNewCallbackQuery(message['callback_query'], self.configHandler, self.uData, self.tMsgSender)
+		self.tNewCallbackQuery = tNewCallbackQuery(message['callback_query'], self.configHandler, self.uData, self.tMsgSender)

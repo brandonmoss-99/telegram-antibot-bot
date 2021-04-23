@@ -1,13 +1,17 @@
 import requests, json, time
 from tMsgSender import tMsgSender
+from configHandler import configHandler
 
 # handles fetching of messages, returning basic message info
 class tMsgFetcher:
-	def __init__(self, token, pollTimeout=20):
+	def __init__(self, token, tMsgSender, configHandler, pollTimeout=20):
 		self.token = token
 		self.pollTimeout = pollTimeout
 		self.messages = None
 		self.messagesParsed = None
+		self.tMsgSender = tMsgSender
+		self.configHandler = configHandler
+		self.msgOffset = self.configHandler.configBotData['msgOffset']
 
 	# get new messages, pass in offset of last message to fetch only new ones
 	# and mark to telegram servers it can remove messages older than that
@@ -16,7 +20,7 @@ class tMsgFetcher:
 		# until there is a new update to send back, may hang here for a while
 		# define which updates want telegram to send us, ignore every other update type
 		updatesToFetch = '["message", "callback_query"]'
-		updateRequest = sendRequest(["getUpdates", "offset", msgOffset, "timeout", self.pollTimeout, "allowed_updates", updatesToFetch])
+		updateRequest = self.tMsgSender.sendRequest(["getUpdates", "offset", self.msgOffset, "timeout", self.pollTimeout, "allowed_updates", updatesToFetch])
 		if updateRequest[0] == True:
 			self.messagesParsed = json.loads(updateRequest[2])
 			return True
@@ -48,3 +52,6 @@ class tMsgFetcher:
 	def getMessageType(self, pos):
 		test = list(pos.keys())
 		return test[1]
+
+	def updateMsgOffset(self, val):
+		self.msgOffset = val

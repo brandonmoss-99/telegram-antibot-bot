@@ -1,4 +1,4 @@
-from tMsgText import tMsgText
+from tNewTextMsg import tNewTextMsg
 from configHandler import configHandler
 from tNewTextMsg import tNewTextMsg
 from tNewLeftMember import tNewLeftMember
