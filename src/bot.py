@@ -2,40 +2,13 @@ import requests, json, random, sys, getopt, time, os, copy, datetime
 from urllib import parse
 from tMsgSender import tMsgSender
 from tMsgFetcher import tMsgFetcher
+from uData import uData
 
 def getHelp():
 	print("\nList of options:\n\n" +
 		"-(t)oken of bot to control\n" +
 		"--help to show this help message\n\n")
 	sys.exit(0)
-
-
-class messageHandler:
-	def __init__(self, token):
-		self.token = token
-
-	def handleMessage(self, message):
-		# if the chat the message was sent from is active, process message
-		if config.getCustomGroupConfig(message['message']['chat']['id'])['active']:
-			if 'new_chat_members' in message['message']:
-				newMessage = message_new_chat_members(message['message'])
-			elif 'left_chat_member' in message['message']:
-				newMessage = message_new_left_members(message['message'])
-			elif 'forward_from' in message['message']:
-				newMessage = message_new_forwarded(message['message'])
-			elif 'text' in message['message']:
-				newMessage = message_new_text(message['message'])
-			elif ('contact' in message['message']) or ('location' in message['message']):
-				newMessage = message_new_locationOrContact(message['message'])
-		# still allow commands to be processed, even when inactive in chat
-		if 'entities' in message['message']:
-			for entity in message['message']['entities']:
-				if entity['type'] == "bot_command":
-					newMessage = message_new_botCommand(message['message'])
-					# break the for loop if a bot command is found. It's possible for a user
-					# to send multiple bot commands in 1 message; only treat the first one
-					# as a bot command, treat any extra commands as text instead
-					break
 
 
 class message_new_botCommand:
@@ -955,6 +928,8 @@ if __name__ == '__main__':
 
 	tMsgSender = tMsgSender(token)
 	tMsgFetcher = tMsgFetcher(token, pollTimeout)
+	uData = uData()
+	
 	messageHandler = messageHandler(token)
 	callback_queryHandler = callback_queryHandler(token)
 
