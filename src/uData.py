@@ -22,7 +22,7 @@ class uData:
 		return self.newUsers.keys()
 
 
-	def getnewUserData(self, key):
+	def getAllUserData(self, key):
 		"""
 		Return all values for a given key
 		"""
@@ -35,14 +35,35 @@ class uData:
 		return True if key in self.newUsers else False
 
 	def getData(self, key, value):
+		"""
+		Return specified data for a given key
+		"""
 		return self.newUsers[key][value]
 
 	def appendData(self, key, value, data):
+		"""
+		Append data to a specified value at a specified Dictionary key
+		"""
 		self.newUsers[key][value].append(data)
 
+	def popData(self, key, value, itemIndex):
+		"""
+		Return data popped from index of a specified value at a specified Dictionary key
+		"""
+		return self.newUsers[key][value].pop(itemIndex)
+
 	def setData(self, key, value, data):
+		"""
+		Set data on a specified value at a specified Dictionary key
+		"""
 		self.newUsers[key][value] = data
 
 
-	def addnewUser(self, key, data):
+	def addNewUser(self, key, data):
+		"""
+		Add new user data to newUsers Dictionary
+		"""
 		self.newUsers[key] = data
+
+	def deleteNewUser(self, key):
+		del self.newUsers[key]
