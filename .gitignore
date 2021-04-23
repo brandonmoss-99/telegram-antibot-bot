@@ -1,0 +1,4 @@
+.DS_Store
+whitelist.txt
+config.txt
+venv/
