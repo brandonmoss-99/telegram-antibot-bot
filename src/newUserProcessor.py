@@ -1,4 +1,4 @@
-import time
+import time, json
 from uData import uData
 from configHandler import configHandler
 from tMsgSender import tMsgSender
@@ -64,7 +64,7 @@ class newUserProcessor:
 				(currentUnixTime - userData['timeFailedValidation'] > groupInfo['timeToDelete'])) or
 				((userData['passedValidation'] == True) and 
 				(userData['hasSentGoodMessage'] == False) and 
-				(currentUnixTime - userData['timeJoined'] >= groupInfo['validatedTimeToKick']) and 
+				(currentUnixTime - userData['timeJoined'] >= groupInfo['validatedTimeToKick'] + groupInfo['timeToRestrict']) and 
 				(userData['timeExpiredMessageSendThresh'] != None) and
 				(currentUnixTime - userData['timeExpiredMessageSendThresh'] > groupInfo['timeToDelete'])) or
 				((userData['passedValidation'] == True) and 
@@ -90,7 +90,7 @@ class newUserProcessor:
 			elif ((userData['passedValidation'] == True) and 
 				(userData['hasSentGoodMessage'] == False) and 
 				(userData['hasSentBadMessage'] == False) and
-				(currentUnixTime - userData['timeJoined'] > groupInfo['validatedTimeToKick']) and 
+				(currentUnixTime - userData['timeJoined'] > groupInfo['validatedTimeToKick'] + groupInfo['timeToRestrict']) and 
 				(userData['timeExpiredMessageSendThresh'] == None)):
 					userData['timeExpiredMessageSendThresh'] = currentUnixTime
 
