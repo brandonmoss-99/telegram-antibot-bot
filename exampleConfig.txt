@@ -24,7 +24,7 @@
                 "timeToRestrict": 60,
                 "validatedTimeToKick": 900,
                 "timeToRestrictForwards": 120,
-                "timeToDelete": 120
+                "timeToDelete": 120,
                 "active": true,
                 "inLockdown": false
             },
